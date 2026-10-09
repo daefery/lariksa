@@ -1,0 +1,21 @@
+Lariksa - notulen rapat yang tetap di laptopmu.
+
+MEMULAI
+1. Ekstrak folder ini ke mana saja (Documents, flashdisk, dsb.)
+2. Jalankan Lariksa.exe
+   Jika muncul "Windows protected your PC": klik "More info" lalu "Run anyway".
+   (Aplikasi belum ditandatangani secara digital.)
+3. Klik "Unduh semua" sekali (sekitar 4 GB). Setelah itu Lariksa bekerja offline.
+4. Saat rapat dimulai, tekan Rekam. Saat selesai, tekan Selesai.
+   Notulen siap dalam 1-3 menit (GPU) atau beberapa menit lebih lama di laptop tanpa GPU.
+
+TIPS
+- Pakai headset agar suaramu dan suara peserta terekam terpisah dengan bersih.
+- Isi Glosarium di Pengaturan dengan nama rekan kerja dan istilah tim.
+- Beri tahu peserta bahwa rapat direkam.
+
+DATA
+Semua rekaman, transkrip, dan notulen ada di folder "data".
+Model AI ada di folder "models" dan "runtime".
+Pindahkan seluruh folder ini untuk membawa rapatmu ke laptop lain.
+Tidak ada data yang dikirim ke internet, kecuali saat mengunduh model.

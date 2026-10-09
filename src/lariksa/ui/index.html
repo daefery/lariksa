@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lariksa</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#23362C"/><g fill="none" stroke="#C9F27A" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17V48 M20 34L42 17 M30 30L44 48"/></g><circle cx="48" cy="17" r="3.5" fill="#C9F27A"/></svg>
+      <span>lariksa.</span>
+    </div>
+    <nav>
+      <button class="nav active" data-view="home">⌂&nbsp;&nbsp;Beranda</button>
+      <button class="nav" data-view="settings">⚙&nbsp;&nbsp;Pengaturan</button>
+    </nav>
+    <div class="section">RAPAT</div>
+    <label class="search">
+      <span aria-hidden="true">⌕</span>
+      <input id="search" type="search" placeholder="Cari catatanmu" autocomplete="off">
+    </label>
+    <ul id="meeting-list" class="meeting-list" aria-label="Daftar rapat"></ul>
+    <div class="engine" id="engine-label"></div>
+  </aside>
+
+  <main class="content">
+    <!-- HOME -->
+    <section id="view-home" class="view">
+      <div class="toolbar">
+        <div class="eyebrow" id="greeting-eyebrow">LARIKSA</div>
+        <button class="ghost" id="theme" aria-label="Ganti tema">◐ Tema</button>
+      </div>
+      <h1 id="greeting">Selamat datang.</h1>
+      <p class="lede">Notulen rapi pas rapat selesai. Tanpa bot, tanpa langganan, semuanya di laptopmu.</p>
+
+      <div id="setup-card" class="setup hidden">
+        <strong>Siapkan Lariksa sekali saja</strong>
+        <p>Model AI diunduh ke folder Lariksa dan berjalan offline setelahnya.</p>
+        <ul id="setup-list"></ul>
+        <button id="setup-go">Unduh semua</button>
+      </div>
+
+      <div class="record-card" id="record-card">
+        <div class="record-copy">
+          <strong id="record-title">Mulai rapat</strong>
+          <small id="record-sub">Rekam suaramu dan suara peserta dari Meet, Zoom, atau Teams.</small>
+          <input id="meeting-title" class="title-input" placeholder="Judul rapat (opsional)" maxlength="120">
+        </div>
+        <div class="record-actions">
+          <div class="meters hidden" id="meters">
+            <div class="meter"><span>Saya</span><i><b id="lvl-mic"></b></i></div>
+            <div class="meter"><span>Peserta</span><i><b id="lvl-system"></b></i></div>
+          </div>
+          <button id="record" class="record-btn"><span class="dot"></span><span id="record-label">Rekam</span></button>
+        </div>
+      </div>
+      <p class="consent" id="consent">Beri tahu peserta bahwa rapat ini direkam.</p>
+
+      <div class="row-between">
+        <div class="eyebrow">RAPAT TERBARU</div>
+        <button class="link" id="import">+ Impor rekaman</button>
+      </div>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <!-- MEETING -->
+    <section id="view-meeting" class="view hidden">
+      <div class="toolbar">
+        <button class="link" id="back">← Kembali</button>
+        <div class="actions">
+          <button class="ghost" id="copy-wa">Salin untuk WhatsApp</button>
+          <button class="ghost" id="export-docx">DOCX</button>
+          <button class="ghost" id="export-md">Markdown</button>
+          <button class="ghost danger" id="delete">Hapus</button>
+        </div>
+      </div>
+      <input id="m-title" class="h1-input" aria-label="Judul rapat">
+      <div class="meta" id="m-meta"></div>
+      <div id="m-progress" class="progress hidden"><div class="bar"><b></b></div><span></span></div>
+      <div id="m-error" class="error hidden"></div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="notulen" role="tab">Notulen</button>
+        <button class="tab" data-tab="transcript" role="tab">Transkrip</button>
+      </div>
+      <div id="tab-notulen" class="tab-body"></div>
+      <div id="tab-transcript" class="tab-body hidden"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view hidden">
+      <div class="eyebrow">PENGATURAN</div>
+      <h1>Pengaturan</h1>
+      <div class="card form">
+        <label>Bahasa rapat
+          <select id="s-language">
+            <option value="id">Bahasa Indonesia (campur Inggris)</option>
+            <option value="en">English</option>
+            <option value="">Deteksi otomatis</option>
+          </select>
+        </label>
+        <label>Model transkripsi
+          <select id="s-whisper">
+            <option value="auto">Otomatis (paling akurat)</option>
+            <option value="whisper-turbo">Whisper large-v3-turbo</option>
+            <option value="whisper-small">Whisper small (lebih ringan)</option>
+          </select>
+        </label>
+        <label>Glosarium: nama orang, produk, istilah
+          <textarea id="s-glossary" rows="4" placeholder="Sari, Budi, OKR, sprint review, Solve Education"></textarea>
+          <small>Dipakai untuk membantu AI mengeja nama dan istilah dengan benar.</small>
+        </label>
+        <button id="s-save">Simpan</button>
+        <span class="saved hidden" id="s-saved">Semua perubahan tersimpan</span>
+      </div>
+      <div class="eyebrow mt">MODEL & MESIN</div>
+      <div class="card" id="assets"></div>
+      <p class="fine">Semua audio, transkrip, dan notulen disimpan di folder <code>data</code> di samping aplikasi.</p>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>
