@@ -8,6 +8,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/daefery/lariksa/releases/latest/download/Lariksa-portable.zip"><img alt="Download portable zip" src="https://img.shields.io/badge/Download-Portable%20.zip-C9F27A?style=for-the-badge&logo=windows&logoColor=17241E&labelColor=C9F27A&color=23362C"></a>
+  <a href="https://github.com/daefery/lariksa/releases/latest/download/Lariksa.exe"><img alt="Download Lariksa.exe" src="https://img.shields.io/badge/Download-Single%20.exe-23362C?style=for-the-badge&logo=windows&logoColor=C9F27A"></a>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-23362C"></a>
   <img alt="Platform: Windows 10/11" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-23362C">
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-23362C">
@@ -68,17 +73,26 @@ Measured on an RTX 3050 Ti laptop (4 GB VRAM), i7-12650H, 10 minutes of real Ind
 
 A 1-hour meeting needs about 5 minutes after you stop on that GPU (estimated, not yet measured).
 
-## Get started
+## Download
+
+| | File | Size | |
+|---|---|---|---|
+| **Recommended** | [**Lariksa-portable.zip**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa-portable.zip) | 96 MB | Extract anywhere, run `Lariksa\Lariksa.exe`. Opens fastest. |
+| Single file | [**Lariksa.exe**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa.exe) | 96 MB | One file. Put it in its own folder: models and meetings are saved next to it. Opens a few seconds slower. |
+
+Both links always point to the [latest release](https://github.com/daefery/lariksa/releases/latest); checksums are in [`SHA256SUMS.txt`](https://github.com/daefery/lariksa/releases/latest/download/SHA256SUMS.txt). Or [build it yourself](#build-from-source).
 
 **Requirements:** Windows 10 2004+ or Windows 11 (x64), 8 GB RAM (16 GB recommended), about 6 GB of free disk. An NVIDIA GPU is optional and makes transcription about 9x faster.
 
-1. Get `Lariksa-portable.zip` from [Releases](https://github.com/daefery/lariksa/releases) (or [build it](#build-from-source)) and extract it anywhere: Documents, an external drive, no installer, no admin rights.
+## Get started
+
+1. Download one of the files above. No installer, no admin rights: Documents or an external drive both work.
 2. Run `Lariksa.exe`. If Windows shows "Windows protected your PC", choose **More info → Run anyway** (the app is not code-signed yet).
 3. Click **Unduh semua** (download all) once, about 4 GB. After that Lariksa works offline.
 4. In **Pengaturan**, add your colleagues' names and team jargon to the glossary.
 5. Tell participants the meeting is recorded, press **Rekam**, and **Selesai** when you're done.
 
-Everything (models, runtime and your meetings in `data/`) lives in that one folder. Copy it to another laptop and your meetings come with it.
+Everything (models, runtime and your meetings in `data/`) lives in the app's folder. Copy it to another laptop and your meetings come with it.
 
 ## Architecture
 
@@ -105,7 +119,7 @@ On Windows, with no system Python needed (uv and Python are fetched into `.tools
 powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
 
-This runs the tests and produces `dist\Lariksa\Lariksa.exe` and `dist\Lariksa-portable.zip` (~96 MB). Models download inside the app on first run.
+This runs the tests and produces the app folder `dist\Lariksa\` plus the release files in `dist\release\`: `Lariksa-portable.zip`, the single-file `Lariksa.exe` and `SHA256SUMS.txt`. Models download inside the app on first run.
 
 Develop:
 
