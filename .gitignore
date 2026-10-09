@@ -8,3 +8,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Brand kit source documents stay local; the repo carries the extracted assets.
+*.pdf
+*.zip

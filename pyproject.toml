@@ -2,7 +2,10 @@
 name = "lariksa"
 version = "0.1.0"
 description = "Portable, local-first meeting notes for Windows: two-track recording, Indonesian-first transcription, notulen from a local LLM."
-authors = [{ name = "Fery" }]
+authors = [{ name = "Fery Yundara Putera" }]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "faster-whisper>=1.2.1",
@@ -14,6 +17,9 @@ dependencies = [
   "pywebview>=6.0; sys_platform == 'win32'",
   "PyAudioWPatch>=0.2.12; sys_platform == 'win32'",
 ]
+
+[project.urls]
+Repository = "https://github.com/daefery/lariksa"
 
 [project.scripts]
 lariksa = "lariksa.app:main"

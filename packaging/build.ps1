@@ -30,6 +30,7 @@ New-Item -ItemType Directory -Force $app | Out-Null
 if (Test-Path "$app\_internal") { Remove-Item -Recurse -Force "$app\_internal" }
 Copy-Item -Recurse -Force build\pyi-dist\Lariksa\* $app
 Copy-Item -Force packaging\BACA-SAYA.txt $app
+foreach ($f in 'LICENSE', 'NOTICE', 'TRADEMARKS.md') { Copy-Item -Force $f $app; Copy-Item -Force $f build\pyi-dist\Lariksa }
 
 # The zip carries the app only; models download on first run.
 $zip = "dist\Lariksa-portable.zip"
