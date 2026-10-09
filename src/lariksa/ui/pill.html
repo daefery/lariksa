@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Lariksa</title>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/PlusJakartaSans.woff2) format("woff2");font-weight:200 800}
+@font-face{font-family:"DM Mono";src:url(fonts/DMMono-400.woff2) format("woff2")}
+*{box-sizing:border-box;margin:0;user-select:none}
+html,body{height:100%;background:#17241E;overflow:hidden}
+body{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#F2F5EF;-webkit-font-smoothing:antialiased}
+.pill{height:100%;display:flex;align-items:center;gap:10px;padding:0 8px 0 12px;border:1px solid #2F4537;border-radius:0}
+.grip{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:100%;cursor:move}
+.mark{width:22px;height:22px;flex:none}
+.dot{width:10px;height:10px;border-radius:50%;background:#E8604C;flex:none;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.dot{animation:none}}
+.text{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.big{font-family:"DM Mono",monospace;font-size:15px;font-weight:400;letter-spacing:.02em}
+.small{font-size:10.5px;color:#BACABF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meters{display:flex;gap:3px;align-items:flex-end;height:18px;flex:none}
+.meters i{width:3px;border-radius:2px;background:#C9F27A;height:3px;transition:height 120ms linear}
+.meters i.sys{background:#8FD3B4}
+.warn .small{color:#F2C66B}
+button{font:inherit;border:0;cursor:pointer;border-radius:8px;height:30px;padding:0 12px;font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:6px;flex:none}
+.stop{background:#C9F27A;color:#17241E}
+.stop b{width:9px;height:9px;border-radius:2px;background:#17241E;display:block}
+.open{background:#2F4537;color:#F2F5EF}
+.close{background:transparent;color:#8FA394;width:24px;padding:0;justify-content:center;font-size:15px}
+.close:hover{color:#F2F5EF}
+.bar{position:absolute;left:0;bottom:0;height:3px;background:#C9F27A;width:0;transition:width 400ms}
+.hidden{display:none!important}
+button:focus-visible{outline:2px solid #C9F27A;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="pill" id="pill">
+  <div class="grip pywebview-drag-region" id="grip">
+    <svg class="mark pywebview-drag-region" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#C9F27A"/><path d="M15.250 15.000 V35.000 A13.750 13.750 0 0 0 29.000 48.750 H35.000 A3.750 3.750 0 0 0 35.000 41.250 H29.000 A6.250 6.250 0 0 1 22.750 35.000 V15.000 A3.750 3.750 0 0 0 15.250 15.000Z" fill="#17241E"/><circle cx="44.5" cy="45.0" r="4.6" fill="#17241E"/></svg>
+    <span class="dot pywebview-drag-region" id="dot"></span>
+    <div class="text pywebview-drag-region">
+      <span class="big pywebview-drag-region" id="big">00:00</span>
+      <span class="small pywebview-drag-region" id="small">Merekam</span>
+    </div>
+    <div class="meters pywebview-drag-region" id="meters" aria-hidden="true">
+      <i></i><i></i><i></i><i class="sys"></i><i class="sys"></i><i class="sys"></i>
+    </div>
+  </div>
+  <button class="stop" id="stop" title="Selesai merekam"><b></b><span id="stop-label">Selesai</span></button>
+  <button class="open hidden" id="open">Buka</button>
+  <button class="close hidden" id="close" title="Tutup indikator" aria-label="Tutup">×</button>
+</div>
+<div class="bar" id="bar"></div>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const api = () => window.pywebview.api;
+let hotkey = "";
+
+function clock(s) {
+  s = Math.max(0, Math.round(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  const p = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`;
+}
+
+const STAGE = { queued: "Menunggu", transcribing: "Transkripsi", summarizing: "Menyusun notulen" };
+
+function render(s) {
+  const recording = s.recording;
+  const busy = !!s.activity.meeting_id;
+  $("dot").classList.toggle("hidden", !recording);
+  $("meters").classList.toggle("hidden", !recording);
+  $("stop").classList.toggle("hidden", !recording);
+  $("open").classList.toggle("hidden", recording);
+  $("close").classList.toggle("hidden", recording);
+  $("pill").classList.toggle("warn", recording && (s.silent || []).length > 0);
+
+  if (recording) {
+    $("big").textContent = clock(s.elapsed);
+    const silent = s.silent || [];
+    $("small").textContent = silent.includes("mic") ? "Mic tidak terdengar"
+      : silent.includes("system") ? "Belum ada suara peserta" : (hotkey ? `Merekam · ${hotkey}` : "Merekam");
+    const bars = [...document.querySelectorAll(".meters i")];
+    const mic = (s.levels || {}).mic || 0, sys = (s.levels || {}).system || 0;
+    bars.forEach((b, i) => {
+      const v = i < 3 ? mic : sys;
+      const k = [0.6, 1, 0.75][i % 3];
+      b.style.height = `${3 + Math.min(15, v * 40 * k)}px`;
+    });
+    $("bar").style.width = "0";
+  } else if (busy) {
+    const p = s.activity.progress || 0;
+    $("big").textContent = s.activity.stage === "queued" ? "…" : `${Math.round(p * 100)}%`;
+    $("small").textContent = `${STAGE[s.activity.stage] || "Memproses"}${s.queue ? ` · ${s.queue} antre` : ""}`;
+    $("bar").style.width = `${Math.round(p * 100)}%`;
+  } else {
+    $("big").textContent = "Selesai";
+    $("small").textContent = "Notulen siap";
+    $("bar").style.width = "100%";
+  }
+}
+
+async function poll() {
+  try { render(await api().status()); } catch (e) { /* window closing */ }
+}
+
+window.addEventListener("pywebviewready", async () => {
+  hotkey = (await api().hotkey_label()) || "";
+  $("stop").title = hotkey ? `Selesai merekam (${hotkey})` : "Selesai merekam";
+  $("stop").addEventListener("click", async () => { $("stop").disabled = true; await api().stop_recording(); $("stop").disabled = false; poll(); });
+  $("open").addEventListener("click", () => api().show_main());
+  $("close").addEventListener("click", () => api().hide_pill());
+  poll();
+  setInterval(poll, 400);
+});
+</script>
+</body>
+</html>

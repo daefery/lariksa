@@ -432,6 +432,12 @@ function renderRecorder(s) {
   $("lvl-mic").style.width = `${Math.min(100, (s.levels.mic || 0) * 140)}%`;
   $("lvl-system").style.width = `${Math.min(100, (s.levels.system || 0) * 140)}%`;
   $("record").disabled = !s.ready && !live;
+  const hint = $("kbd-hint");
+  hint.classList.toggle("hidden", !state.hotkeyLabel);
+  if (state.hotkeyLabel) {
+    hint.replaceChildren(...state.hotkeyLabel.split("+").flatMap((k, i) => [i ? " + " : "", el("kbd", {}, k)]),
+      live ? " untuk selesai, dari aplikasi mana pun" : " untuk mulai, dari aplikasi mana pun");
+  }
   $("record").title = s.ready ? "" : "Unduh model AI dulu";
 }
 
@@ -485,14 +491,20 @@ function renderSettings() {
   $("s-notulen-language").value = s.settings.notulen_language;
   $("s-whisper").value = s.settings.whisper_model;
   $("s-glossary").value = s.settings.glossary.join(", ");
+  $("s-hotkey").value = s.settings.hotkey || "";
+  $("s-pill").checked = s.settings.show_pill !== false;
+  showHotkeyError(state.hotkeyError);
   renderAssets(s);
 }
 
 async function saveSettings() {
-  await api().save_settings({
+  const saved = await api().save_settings({
     language: $("s-language").value, notulen_language: $("s-notulen-language").value,
     whisper_model: $("s-whisper").value, glossary: $("s-glossary").value,
+    hotkey: $("s-hotkey").value.trim(), show_pill: $("s-pill").checked,
   });
+  state.hotkeyError = saved.hotkey_error || "";
+  state.hotkeyLabel = state.hotkeyError ? "" : (saved.hotkey || "");
   $("s-saved").classList.remove("hidden");
   setTimeout(() => $("s-saved").classList.add("hidden"), 2000);
   await poll();
@@ -571,9 +583,17 @@ function wire() {
   });
 }
 
+function showHotkeyError(error) {
+  const note = $("s-hotkey-note");
+  note.classList.toggle("warn-text", !!error);
+  note.textContent = error || "Tekan saat Zoom atau Meet terbuka untuk mulai atau selesai merekam. Kosongkan untuk mematikan.";
+}
+
 async function boot() {
   wire();
   greet();
+  state.hotkeyLabel = await api().hotkey_label();
+  state.hotkeyError = await api().hotkey_error();
   const s = await api().status();
   document.documentElement.dataset.theme = s.settings.theme || "light";
   await poll();

@@ -47,6 +47,7 @@
         <div class="record-copy">
           <strong id="record-title">Mulai rapat</strong>
           <small id="record-sub">Rekam suaramu dan suara peserta dari Meet, Zoom, atau Teams.</small>
+          <small class="kbd-hint hidden" id="kbd-hint"></small>
           <input id="meeting-title" class="title-input" placeholder="Judul rapat (opsional)" maxlength="120">
         </div>
         <div class="record-actions">
@@ -143,6 +144,11 @@
           <textarea id="s-glossary" rows="4" placeholder="Sari, Budi, OKR, sprint review, Solve Education"></textarea>
           <small>Dipakai untuk membantu AI mengeja nama dan istilah dengan benar.</small>
         </label>
+        <label>Pintasan rekam / selesai (berfungsi di aplikasi mana pun)
+          <input id="s-hotkey" placeholder="Ctrl+Shift+R" maxlength="40" autocomplete="off">
+          <small id="s-hotkey-note">Tekan saat Zoom atau Meet terbuka untuk mulai atau selesai merekam. Kosongkan untuk mematikan.</small>
+        </label>
+        <label class="check"><input type="checkbox" id="s-pill"> Tampilkan indikator mengambang saat merekam dan memproses</label>
         <button id="s-save">Simpan</button>
         <span class="saved hidden" id="s-saved">Semua perubahan tersimpan</span>
       </div>

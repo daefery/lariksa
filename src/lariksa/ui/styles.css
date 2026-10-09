@@ -217,3 +217,11 @@ h1{font-size:40px;letter-spacing:-1.6px;margin:16px 0 6px;line-height:1.1}
 @keyframes flash{0%{background:var(--brand-accent)}100%{background:transparent}}
 mark{background:var(--brand-accent);color:#17241E;border-radius:3px;padding:0 2px}
 .legacy-note{font-size:13px;color:var(--text-secondary);background:var(--surface-muted);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:20px}
+
+/* ---------------------------------------------------------------- shortcut + indicator settings */
+.kbd-hint{margin-top:10px!important;font-size:12px;opacity:.85}
+kbd{font-family:var(--font-mono);font-size:11px;padding:2px 6px;border-radius:5px;border:1px solid rgba(23,36,30,.25);background:rgba(255,255,255,.55);color:#17241E}
+.record-card.live kbd{background:rgba(242,245,239,.12);border-color:rgba(242,245,239,.3);color:#F2F5EF}
+.form label.check{display:flex;align-items:center;gap:10px;font-weight:500}
+.form label.check input{min-height:0;width:18px;height:18px;accent-color:var(--focus-ring)}
+.warn-text{color:var(--warning)!important;font-weight:600}

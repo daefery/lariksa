@@ -30,9 +30,27 @@ class Bridge:
     def __init__(self, service: LariksaService):
         self._service = service
         self._window = None
+        self._overlay = None
+        self._hotkey_error = ""
 
-    def attach(self, window) -> None:
+    def attach(self, window, overlay=None) -> None:
         self._window = window
+        self._overlay = overlay
+
+    # -- floating indicator --------------------------------------------------
+    def hotkey_label(self) -> str:
+        return self._overlay.hotkey_label if self._overlay else ""
+
+    def hotkey_error(self) -> str:
+        return getattr(self, "_hotkey_error", "")
+
+    def show_main(self) -> None:
+        if self._overlay:
+            self._overlay.show_main()
+
+    def hide_pill(self) -> None:
+        if self._overlay:
+            self._overlay.hide_pill()
 
     # Each method is a one-liner on purpose: the UI contract is the service.
     def status(self) -> dict:
@@ -63,7 +81,11 @@ class Bridge:
         return self._service.delete(meeting_id)
 
     def save_settings(self, values: dict) -> dict:
-        return self._service.save_settings(values)
+        before = self._service.store.settings().get("hotkey")
+        saved = self._service.save_settings(values)
+        if self._overlay and saved.get("hotkey") != before:
+            self._hotkey_error = self._overlay.start_hotkey(saved.get("hotkey", ""))
+        return {**saved, "hotkey_error": getattr(self, "_hotkey_error", "")}
 
     def download(self, keys: list[str]) -> dict:
         return self._service.download(keys)

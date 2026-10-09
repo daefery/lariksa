@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from .hotkey import DEFAULT_HOTKEY
 from .minutes import Minutes, load_minutes
 from .minutes_render import to_markdown
 from .transcript import Utterance, as_text, from_dicts
@@ -52,6 +53,8 @@ DEFAULT_SETTINGS = {
     "whisper_model": "auto",  # auto | whisper-turbo | whisper-small
     "glossary": [],
     "theme": "light",
+    "hotkey": DEFAULT_HOTKEY,  # global start/stop shortcut; "" disables it
+    "show_pill": True,         # floating always-on-top recording indicator
 }
 
 

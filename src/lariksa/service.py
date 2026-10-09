@@ -62,6 +62,7 @@ class LariksaService:
         self._jobs: queue.Queue[Job] = queue.Queue()
         self._cancel = threading.Event()
         self._download_lock = threading.Lock()
+        self._record_lock = threading.Lock()
         self._cuda = register_cuda_libraries(catalog.CUDA_RUNTIME.path(paths))
         self.media = MediaServer(paths.meeting_dir)
         self._recover()
@@ -161,6 +162,13 @@ class LariksaService:
     # -- recording -------------------------------------------------------
 
     def start_recording(self, title: str = "") -> dict:
+        # The main window button, the pill and the global shortcut can all race here.
+        with self._record_lock:
+            if self.recorder.recording:
+                return {"ok": False, "error": "Rekaman sudah berjalan."}
+            return self._start_recording(title)
+
+    def _start_recording(self, title: str) -> dict:
         settings = self.store.settings()
         meeting = self.store.create(title=title.strip(), language=settings["language"])
         try:
@@ -173,6 +181,10 @@ class LariksaService:
         return {"ok": True, "meeting_id": meeting.id, "devices": devices}
 
     def stop_recording(self) -> dict:
+        with self._record_lock:
+            return self._stop_recording()
+
+    def _stop_recording(self) -> dict:
         if not self.recorder.recording:
             return {"ok": False, "error": "Tidak ada rekaman yang berjalan."}
         duration = self.recorder.stop()
