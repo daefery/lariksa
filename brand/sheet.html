@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url(../src/lariksa/ui/fonts/PlusJakartaSans.woff2) format("woff2");font-weight:200 800}
+@font-face{font-family:"DM Mono";src:url(../src/lariksa/ui/fonts/DMMono-400.woff2) format("woff2")}
+:root{--forest:#23362C;--ink:#17241E;--lime:#C9F27A;--paper:#F7F8F4;--sage:#E9EDE5;--muted:#65736B;--line:#DDE4DA}
+*{box-sizing:border-box;margin:0}
+body{width:1600px;height:2000px;background:var(--paper);color:var(--forest);font-family:"Plus Jakarta Sans",sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:"DM Mono",monospace}
+.eyebrow{font-family:"DM Mono",monospace;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+section{padding:0 88px}
+h2{font-size:30px;letter-spacing:-.8px;font-weight:800;margin:8px 0 22px}
+p{color:var(--muted);font-size:17px;line-height:1.6}
+
+.hero{height:640px;background:var(--ink);display:grid;grid-template-columns:600px 1fr;align-items:center;padding:0 88px;gap:60px}
+.hero .big{width:520px;height:520px}
+.hero h1{color:#fff;font-size:64px;line-height:1.02;letter-spacing:-2.4px;font-weight:800}
+.hero h1 em{font-style:normal;color:var(--lime)}
+.hero p{color:#BACABF;font-size:20px;max-width:600px;margin-top:22px}
+.hero .eyebrow{color:#8FA394;margin-bottom:22px}
+
+.story{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:64px}
+.step{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px;display:flex;flex-direction:column;gap:16px}
+.step svg{width:120px;height:120px}
+.step b{font-size:19px}
+
+.lockups{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:56px}
+.panel{border-radius:20px;padding:44px;display:flex;align-items:center;justify-content:center;height:230px}
+.panel img{height:118px}
+
+.row{display:grid;grid-template-columns:repeat(6,1fr);gap:22px;margin-top:56px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
+.tile .bg{width:100%;height:190px;border-radius:18px;display:grid;place-items:center}
+.tile img{width:120px;height:120px}
+
+.small{display:flex;align-items:flex-end;gap:28px;margin-top:56px}
+.small .s{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:13px}
+.small img{image-rendering:pixelated}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-top:56px}
+.rules ul{list-style:none;padding:0;display:grid;gap:10px;font-size:16px;color:var(--forest)}
+.rules li::before{content:"·";color:var(--muted);margin-right:10px}
+.sw{display:flex;gap:14px;margin-top:6px}
+.sw div{width:120px;height:120px;border-radius:16px;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;font-size:13px;font-weight:700}
+.sw span{font-family:"DM Mono",monospace;font-weight:400;opacity:.8}
+</style></head>
+<body>
+<div class="hero">
+  <img class="big" src="logo/mark-forest.svg">
+  <div>
+    <div class="eyebrow">Lariksa · logo system v2</div>
+    <h1>A line of writing, <em>and the full stop</em> when the minutes are done.</h1>
+    <p>The mark is a soft “l” that turns into a written line, from <i>larik</i>, a line of writing. It ends in a lime full stop, the same one that closes the wordmark.</p>
+  </div>
+</div>
+
+<section>
+  <div class="story">
+    <div class="step"><svg viewBox="0 0 64 64"><path d="M18 12V44" stroke="#23362C" stroke-width="7.5" stroke-linecap="round"/></svg><b>l: the speaker’s voice</b><p>A single upright stroke, the initial of lariksa.</p></div>
+    <div class="step"><svg viewBox="0 0 64 64"><path d="M18 12V34a10 10 0 0 0 10 10H40" fill="none" stroke="#23362C" stroke-width="7.5" stroke-linecap="round"/></svg><b>Turns into a line of text</b><p>A pen-like turn onto the baseline: speech becomes a written line.</p></div>
+    <div class="step"><svg viewBox="0 0 64 64"><path d="M14 12V34a10 10 0 0 0 10 10H32" fill="none" stroke="#23362C" stroke-width="7.5" stroke-linecap="round"/><circle cx="41.5" cy="44" r="4.6" fill="#C9F27A"/></svg><b>Ends in a full stop</b><p>The lime dot: the notulen is finished. One accent, used once.</p></div>
+  </div>
+
+  <div class="lockups">
+    <div class="panel" style="background:#fff;border:1px solid var(--line)"><img src="logo/lockup-light.svg"></div>
+    <div class="panel" style="background:var(--ink)"><img src="logo/lockup-dark.svg"></div>
+  </div>
+
+  <div class="row">
+    <div class="tile"><div class="bg" style="background:#fff;border:1px solid var(--line)"><img src="logo/mark-forest.svg"></div>Primary · forest</div>
+    <div class="tile"><div class="bg" style="background:var(--ink)"><img src="logo/mark-lime.svg"></div>On dark · lime</div>
+    <div class="tile"><div class="bg" style="background:var(--forest)"><img src="logo/mark-paper.svg"></div>On colour · paper</div>
+    <div class="tile"><div class="bg" style="background:#fff;border:1px solid var(--line)"><img src="logo/mark-mono-forest.svg"></div>One colour</div>
+    <div class="tile"><div class="bg" style="background:var(--forest)"><img src="logo/mark-mono-white.svg"></div>Reversed</div>
+    <div class="tile"><div class="bg" style="background:var(--sage)"><img src="logo/wordmark-forest.svg" style="width:180px;height:auto"></div>Wordmark</div>
+  </div>
+
+  <div class="rules">
+    <div>
+      <div class="eyebrow">Small sizes</div>
+      <h2>A heavier master for 16–24 px</h2>
+      <div class="small">
+        <div class="s"><img src="logo/png/icon-16.png" width="64" height="64">16 px ×4</div>
+        <div class="s"><img src="logo/png/icon-24.png" width="72" height="72">24 px ×3</div>
+        <div class="s"><img src="logo/png/icon-32.png" width="64" height="64">32 px ×2</div>
+        <div class="s"><img src="logo/mark-forest.svg" width="64" height="64">64 px</div>
+      </div>
+      <p style="margin-top:22px">The favicon and taskbar sizes use a thicker line and a bigger, separated dot so the full stop never disappears.</p>
+    </div>
+    <div>
+      <div class="eyebrow">Colour & use</div>
+      <h2>Forest, lime, paper</h2>
+      <div class="sw">
+        <div style="background:#23362C;color:#F7F8F4">Forest<span>#23362C</span></div>
+        <div style="background:#17241E;color:#F7F8F4">Midnight<span>#17241E</span></div>
+        <div style="background:#C9F27A;color:#17241E">Lime<span>#C9F27A</span></div>
+        <div style="background:#F7F8F4;color:#23362C;border:1px solid var(--line)">Paper<span>#F7F8F4</span></div>
+      </div>
+      <ul style="margin-top:24px">
+        <li>Lime appears once per lockup: in the mark on light, in the full stop on dark.</li>
+        <li>Clear space around the logo: at least the width of the “l” stroke × 3.</li>
+        <li>Minimum size: lockup 120 px wide, mark 16 px (small master).</li>
+        <li>Never stretch, recolour outside the palette, add effects or put it on busy photos.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</body></html>

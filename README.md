@@ -140,6 +140,12 @@ uv run --with pyoxipng python docs/visuals/render.py   # regenerate the README v
 
 Bench scripts in `scripts/`: `bench_asr.py` (Whisper settings side by side), `bench_notulen.py`, `bench_llm.py`, and `smoke.py` (the full pipeline through the service, no UI).
 
+## Brand
+
+<img src="brand/logo/lockup-light.svg" alt="Lariksa logo" height="56">
+
+The mark is a soft “l” that turns into a written line (*larik*, a line of writing) and ends in a lime full stop: the moment the minutes are done. Logo files, usage rules and the generator are in [`brand/`](brand/README.md).
+
 ## Privacy and consent
 
 Audio, transcripts and notulen stay in the app folder. The network is used only to download models and runtimes. Recording other people may require their consent where you live; the app reminds you to tell participants.

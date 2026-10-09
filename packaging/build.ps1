@@ -27,7 +27,9 @@ $env:UV_PYTHON_PREFERENCE = "only-managed"
 & $uv sync --group dev --python 3.12
 & $uv run pytest -q -p no:cacheprovider
 if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
-& $uv run pyinstaller packaging/lariksa.spec --noconfirm --distpath build\pyi-dist --workpath build\pyi-work --log-level WARN
+# --clean: PyInstaller caches each EXE's icon and version resources in the work
+# folder; without it a changed lariksa.ico can silently keep the old icon.
+& $uv run pyinstaller packaging/lariksa.spec --noconfirm --clean --distpath build\pyi-dist --workpath build\pyi-work --log-level WARN
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 $docs = 'LICENSE', 'NOTICE', 'TRADEMARKS.md', 'packaging\BACA-SAYA.txt'

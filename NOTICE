@@ -3,9 +3,11 @@ Copyright 2026 Fery Yundara Putera
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
-The name "Lariksa", the Lariksa logo, monogram and app icon (Lariksa_Brand_Kit_v1.0/,
+The name "Lariksa", the Lariksa logo and app icon (brand/, Lariksa_Brand_Kit_v1.0/,
 src/lariksa/ui/lariksa.ico and the mark inlined in src/lariksa/ui/index.html) are not
 licensed under the Apache License. See TRADEMARKS.md.
+
+The Lariksa wordmark is outlined from Plus Jakarta Sans (SIL Open Font License 1.1).
 
 -------------------------------------------------------------------------------
 Third-party code adapted in this product
