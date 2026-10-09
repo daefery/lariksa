@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+body{width:1600px;height:840px;padding:60px 72px}
+h2{font-size:38px;letter-spacing:-1.3px;font-weight:800;margin-top:10px}
+.board{position:relative;margin-top:36px;height:620px}
+.box{position:absolute;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.box h4{font-size:17px;letter-spacing:-.2px}
+.box p{font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:4px}
+.box .f{font-family:"DM Mono",monospace;font-size:12.5px;color:var(--focus);margin-top:8px}
+.zone{position:absolute;border:1.5px dashed #C7D3C3;border-radius:22px}
+.zone>span{position:absolute;top:-12px;left:20px;background:var(--paper);padding:0 10px;font-size:12px;letter-spacing:.14em;font-weight:700;color:var(--muted)}
+.dark{background:var(--forest);border-color:var(--forest);color:#F2F5EF}
+.dark p{color:#BACABF}
+.dark .f{color:var(--lime)}
+.lime{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.lime p{color:#34483b}
+.lime .f{color:var(--ink)}
+svg.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+</style></head>
+<body>
+<div class="eyebrow">Architecture</div>
+<h2>A small Python core with native engines, wrapped in a WebView window.</h2>
+<div class="board">
+  <svg class="wires" viewBox="0 0 1456 620">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#467A57"/></marker></defs>
+    <g fill="none" stroke="#467A57" stroke-width="2" marker-end="url(#a)">
+      <path d="M250 90 H318"/>
+      <path d="M250 200 H318"/>
+      <path d="M560 145 H628"/>
+      <path d="M870 145 H938"/>
+      <path d="M1180 145 H1236"/>
+      <path d="M440 300 V250"/>
+      <path d="M750 300 V250"/>
+      <path d="M1060 300 V250"/>
+      <path d="M440 420 V470"/>
+    </g>
+  </svg>
+
+  <div class="zone" style="left:0;top:20px;width:260px;height:250px"><span>WINDOWS AUDIO</span></div>
+  <div class="box dark" style="left:22px;top:46px;width:220px"><h4>Microphone</h4><p>Your voice → "Saya"</p><div class="f">mic.wav</div></div>
+  <div class="box dark" style="left:22px;top:156px;width:220px"><h4>System loopback</h4><p>Meet / Zoom / Teams → "Peserta"</p><div class="f">system.wav</div></div>
+
+  <div class="box" style="left:320px;top:40px;width:240px;height:210px"><h4>Recorder</h4><p>WASAPI capture, 16 kHz mono, pads silence so both tracks follow the wall clock; repairs files after a crash.</p><div class="f">recorder.py · audio.py</div></div>
+  <div class="box" style="left:630px;top:40px;width:240px;height:210px"><h4>Transcribe</h4><p>faster-whisper turbo on CUDA or CPU, language + glossary hints, VAD. Tracks merged, echo dropped.</p><div class="f">transcribe.py · transcript.py</div></div>
+  <div class="box" style="left:940px;top:40px;width:240px;height:210px"><h4>Notulen</h4><p>Language detected from the transcript; JSON-schema output; map-reduce for long meetings.</p><div class="f">language.py · notulen.py</div></div>
+  <div class="box lime" style="left:1238px;top:40px;width:218px;height:210px"><h4>Exports</h4><p>Inline editing, WhatsApp copy, DOCX, Markdown, full-text search.</p><div class="f">export.py · bridge.py</div></div>
+
+  <div class="box" style="left:320px;top:300px;width:240px;height:120px"><h4>Service &amp; worker</h4><p>One job at a time, queue survives restarts.</p><div class="f">service.py · pipeline.py</div></div>
+  <div class="box dark" style="left:630px;top:300px;width:240px;height:120px"><h4>Whisper (CTranslate2)</h4><p>cuBLAS + cuDNN when an NVIDIA GPU is present.</p><div class="f">hardware.py</div></div>
+  <div class="box dark" style="left:940px;top:300px;width:240px;height:120px"><h4>llama-server (Vulkan)</h4><p>Short-lived, per-run API key, picks the discrete GPU.</p><div class="f">llm.py</div></div>
+
+  <div class="box" style="left:320px;top:470px;width:280px;height:120px"><h4>SQLite + FTS5</h4><p>Meetings, transcript, notulen, settings, glossary.</p><div class="f">data/lariksa.db</div></div>
+  <div class="box" style="left:640px;top:470px;width:300px;height:120px"><h4>Pinned downloads</h4><p>Models &amp; runtimes, SHA-256 verified, resumable.</p><div class="f">catalog.py → models/ runtime/</div></div>
+  <div class="box" style="left:980px;top:470px;width:476px;height:120px"><h4>UI: pywebview + WebView2</h4><p>HTML/CSS/JS with the Lariksa Brand Kit tokens, Plus Jakarta Sans and DM Mono. Packaged by PyInstaller as a portable folder.</p><div class="f">ui/ · packaging/</div></div>
+</div>
+</body></html>

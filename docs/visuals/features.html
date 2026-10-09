@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+body{width:1600px;height:900px;padding:64px 72px}
+h2{font-size:40px;letter-spacing:-1.4px;font-weight:800;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 28px 26px;display:flex;flex-direction:column;gap:12px;min-height:310px}
+.card.dark{background:var(--forest);border-color:var(--forest);color:#F2F5EF}
+.card.dark p{color:#BACABF}
+.card.lime{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.card.lime p{color:#34483b}
+.icon{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:var(--active)}
+.dark .icon{background:rgba(201,242,122,.14)}
+.lime .icon{background:rgba(23,36,30,.1)}
+.icon svg{width:26px;height:26px}
+h3{font-size:23px;letter-spacing:-.5px;margin-top:4px}
+p{font-size:16px;line-height:1.6;color:var(--muted)}
+.demo{margin-top:auto;font-size:14px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:9px;background:var(--paper);margin-top:6px}
+.dark .row{background:rgba(255,255,255,.07)}
+.lime .row{background:rgba(255,255,255,.5)}
+.row .m{font-family:"DM Mono",monospace;font-size:13px;opacity:.75}
+.tag{font-family:"DM Mono",monospace;font-size:12px;padding:3px 8px;border-radius:6px;background:var(--sage)}
+.dark .tag{background:rgba(255,255,255,.1)}
+</style></head>
+<body>
+<div class="eyebrow">What you get</div>
+<h2>Built for the way Indonesian teams actually meet.</h2>
+<div class="grid">
+  <div class="card dark">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#C9F27A" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <h3>Private by design</h3>
+    <p>Audio, transcripts and notulen never leave the app folder. The network is used only to download the models once.</p>
+    <div class="demo"><div class="row">Cloud upload <span class="m">never</span></div><div class="row">Works offline <span class="m">after setup</span></div></div>
+  </div>
+  <div class="card">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#23362C" stroke-width="2" stroke-linecap="round"><path d="M12 3v12"/><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    <h3>Any call, no bot</h3>
+    <p>Meet in the browser, Zoom, Teams, or any app that plays through your speakers. Lariksa records what your laptop hears, so nobody sees a bot join.</p>
+    <div class="demo"><div class="row">Saya <span class="m">your mic</span></div><div class="row">Peserta <span class="m">everyone else</span></div></div>
+  </div>
+  <div class="card">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#23362C" stroke-width="2" stroke-linecap="round"><path d="M4 5h9M8.5 3v2M6 5c0 4 3 7 6 8M11 5c0 4-3 7-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg></div>
+    <h3>Indonesian &amp; English</h3>
+    <p>Tuned for Indonesian with English work terms. The notulen follows the language that was spoken, or you can fix it.</p>
+    <div class="demo"><div class="row">"Jadi kita need to align soal deadline-nya" <span class="m">→ ID</span></div><div class="row">"Let's review the release plan" <span class="m">→ EN</span></div></div>
+  </div>
+  <div class="card lime">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#17241E" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg></div>
+    <h3>Notulen, not just a summary</h3>
+    <p>Decisions, action items with owner and deadline, and open questions, in a fixed structure you can edit inline.</p>
+    <div class="demo"><div class="row">Fix bug login Android <span class="m">Budi · Rabu</span></div><div class="row">Regression test <span class="m">Sari · Kamis</span></div></div>
+  </div>
+  <div class="card">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#23362C" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><circle cx="17.5" cy="16.5" r="3"/><path d="m20 19 2 2"/></svg></div>
+    <h3>Glossary that fixes names</h3>
+    <p>Add colleagues, products and jargon once. Every meeting passes them to Whisper as hints, so it leans toward the right spelling.</p>
+    <div class="demo"><div class="row">Budi · Sari · Dewi <span class="m">names</span></div><div class="row">sprint review · staging · OKR <span class="m">jargon</span></div></div>
+  </div>
+  <div class="card">
+    <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#23362C" stroke-width="2" stroke-linecap="round"><path d="M3 7l3-3h12l3 3v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 7h18M9 12h6"/></svg></div>
+    <h3>Portable &amp; resilient</h3>
+    <p>One folder, no installer, no admin rights. If the app crashes mid-meeting, the recording is repaired and processing resumes on the next start.</p>
+    <div class="demo"><div class="row">App download <span class="m">96 MB</span></div><div class="row">Models, first run <span class="m">~4 GB</span></div></div>
+  </div>
+</div>
+</body></html>

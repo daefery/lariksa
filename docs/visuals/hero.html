@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+body{width:1600px;height:820px;background:var(--ink);color:#F2F5EF;overflow:hidden;position:relative}
+.rings{position:absolute;inset:0;pointer-events:none}
+.copy{position:absolute;left:96px;top:92px;width:640px}
+.logo{display:flex;align-items:center;gap:14px;font-size:34px;font-weight:700;letter-spacing:-1.4px;color:var(--lime)}
+.logo .mark{width:46px;height:46px}
+h1{font-size:68px;line-height:1.04;letter-spacing:-2.6px;font-weight:800;margin-top:70px;color:#fff}
+h1 em{font-style:normal;color:var(--lime)}
+.sub{font-size:22px;line-height:1.55;color:#BACABF;margin-top:26px;max-width:560px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:40px;max-width:600px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #354A3E;border-radius:999px;padding:9px 16px;font-size:16px;font-weight:600;color:#E3EADF}
+.chip b{width:8px;height:8px;border-radius:50%;background:var(--lime)}
+.app{position:absolute;left:780px;top:110px;width:760px}
+.app .window{width:760px}
+.badge{position:absolute;right:40px;bottom:44px;display:flex;align-items:center;gap:12px;background:var(--lime);color:var(--ink);border-radius:14px;padding:16px 20px;font-weight:700;font-size:17px;box-shadow:0 18px 40px -12px rgba(0,0,0,.6)}
+.badge .t{font-family:"DM Mono",monospace;font-size:15px;font-weight:400;opacity:.8}
+</style></head>
+<body>
+<svg class="rings" viewBox="0 0 1600 820"><circle cx="1480" cy="40" r="360" fill="none" stroke="#2B3D33" stroke-width="2"/><circle cx="1440" cy="40" r="270" fill="none" stroke="#2B3D33" stroke-width="2"/></svg>
+<div class="copy">
+  <div class="logo"><svg class="mark" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#C9F27A"/><g fill="none" stroke="#17241E" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17V48 M20 34L42 17 M30 30L44 48"/></g><circle cx="48" cy="17" r="3.5" fill="#17241E"/></svg>lariksa.</div>
+  <h1>Meeting notes that <em>never leave</em> your laptop.</h1>
+  <p class="sub">Record any Meet, Zoom or Teams call. When you hang up, Lariksa writes the transcript and the notulen with AI that runs on your own machine.</p>
+  <div class="chips">
+    <span class="chip"><b></b>No bot in the call</span>
+    <span class="chip"><b></b>No subscription</span>
+    <span class="chip"><b></b>100% offline AI</span>
+    <span class="chip"><b></b>Indonesian &amp; English</span>
+    <span class="chip"><b></b>Portable for Windows</span>
+  </div>
+</div>
+<div class="app"><div class="window"><div class="bar"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#C9F27A"/></svg>Lariksa</div><img src="../assets/screen-notulen.png"></div></div>
+<div class="badge">Notulen ready <span class="t">~70 s after a 10-min call, on GPU</span></div>
+</body></html>

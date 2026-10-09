@@ -1,40 +1,101 @@
-# Lariksa
+<p align="center">
+  <img src="docs/assets/hero.png" alt="Lariksa: meeting notes that never leave your laptop. The app showing a finished notulen with summary, decisions and action items." width="100%">
+</p>
 
-Portable meeting notes for Windows that never leave your laptop. Press **Rekam** (record) in any Google Meet, Zoom or Teams call; when you stop, Lariksa writes the transcript and the *notulen* (meeting minutes): summary, decisions, action items with owner and deadline, and open questions. Copy it to WhatsApp or export it to DOCX or Markdown.
+<p align="center">
+  <b>Portable meeting notes for Windows.</b> Record any Meet, Zoom or Teams call; when you hang up, Lariksa writes the transcript and the <i>notulen</i> (meeting minutes) with AI that runs on your own machine.<br>
+  No bot in the call · no subscription · nothing uploaded.
+</p>
 
-No bot joins the call, there is no subscription, and nothing is uploaded. The UI is in Indonesian; the notulen is written in the language of the meeting (Indonesian or English).
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-23362C"></a>
+  <img alt="Platform: Windows 10/11" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-23362C">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-23362C">
+  <img alt="Offline AI" src="https://img.shields.io/badge/AI-100%25%20local-C9F27A?labelColor=23362C">
+</p>
+
+---
 
 ## How it works
 
-```
-mic  ──► mic.wav    ──┐                    ┌─► notulen (JSON schema) ─► UI / DOCX / MD / WhatsApp
-                      ├─► faster-whisper ──┤
-loopback ► system.wav ┘   (turbo, VAD)     └─► transcript "Saya" / "Peserta"
-             WASAPI            CUDA or CPU            llama.cpp + Qwen3-4B (Vulkan dGPU, iGPU or CPU)
-```
+![Four steps: record two tracks during the call; after you stop, transcribe with Whisper, write the notulen with a local LLM, then review and share via WhatsApp, Word, Markdown or search.](docs/assets/flow.png)
 
-1. **Record.** Two tracks: the microphone is you ("Saya"), the system loopback is everyone else ("Peserta"). No AI runs during the call.
-2. **Transcribe** after you stop, with Whisper large-v3-turbo. The two tracks are merged by time; the mic's echo of the speakers is dropped, so no diarization model is needed. A glossary of names and jargon biases recognition.
-3. **Write the notulen** with a local LLM. Whisper is unloaded first, so an 8 GB laptop copes. The notulen language follows what was spoken, detected from the transcript, or can be fixed in settings.
+1. **Record.** Press **Rekam**. Your microphone ("Saya") and the meeting audio from your speakers ("Peserta") are saved as two separate tracks. No AI runs during the call, so it stays smooth.
+2. **Transcribe.** Press **Selesai**. Whisper large-v3-turbo turns both tracks into text, merges them by time and drops the mic's echo of the speakers. The track tells it who spoke, so no speaker-detection model is needed.
+3. **Write the notulen.** A local LLM (Qwen3-4B via llama.cpp) fills a fixed structure: summary, decisions, action items with owner and deadline, open questions. Whisper is unloaded first, so an 8 GB laptop copes.
+4. **Review and share.** Edit anything inline, then copy it to WhatsApp or export to Word or Markdown. Every meeting is searchable.
 
-Everything (models, runtime, and `data/` with your meetings) lives next to `Lariksa.exe`. Copy the folder and your meetings come with it.
+You can start the next meeting while the previous one is still processing; jobs run one at a time, in order. If the app closes mid-meeting, the recording is kept and processing resumes on the next start.
 
-## Requirements
+## What you get
 
-- Windows 10 2004+ or Windows 11, x64, with WebView2 (built into Windows 11)
-- 8 GB RAM minimum, 16 GB recommended; about 6 GB of disk for the app and models
-- Optional NVIDIA GPU: transcription is about 9x faster than on CPU
+![Six capability cards: private by design, any call with no bot, Indonesian and English, notulen not just a summary, a glossary for names, portable and resilient.](docs/assets/features.png)
 
-## Measured
+## The notulen speaks the language of the meeting
 
-RTX 3050 Ti laptop (4 GB VRAM), i7-12650H, 10 minutes of real Indonesian speech:
+![The same meeting as Indonesian notulen (Ringkasan, Keputusan, PIC) and as English notulen (Summary, Decisions, Owner).](docs/assets/languages.png)
 
-| Step | GPU | CPU only |
+Indonesian with English work terms ("Jadi kita need to align soal deadline-nya") stays Indonesian. An English meeting gets English notulen, headings included, on screen and in every export. You can also pin one language in **Pengaturan** (Settings).
+
+## The app
+
+![Six screens: one-time setup, recording with two level meters, processing progress, the transcript, settings, and the dark theme.](docs/assets/screens.png)
+
+<details>
+<summary>Full-size screenshots</summary>
+
+| | |
+|---|---|
+| ![Home](docs/assets/screen-home.png) | ![Recording](docs/assets/screen-recording.png) |
+| **Home.** Recent meetings and the record button. | **Recording.** Live levels for you and the meeting. |
+| ![Notulen](docs/assets/screen-notulen.png) | ![Transcript](docs/assets/screen-transcript.png) |
+| **Notulen.** Click any text to edit; it saves automatically. | **Transcript.** Who said what, with timestamps. |
+| ![Settings](docs/assets/screen-settings.png) | ![Dark theme](docs/assets/screen-dark.png) |
+| **Settings.** Languages, model, glossary, downloads. | **Dark theme.** |
+
+</details>
+
+All screenshots show fictional sample data, rendered from the real UI code.
+
+## Speed
+
+Measured on an RTX 3050 Ti laptop (4 GB VRAM), i7-12650H, 10 minutes of real Indonesian speech:
+
+| Step | NVIDIA GPU | CPU only |
 |---|---|---|
-| Transcription, Whisper large-v3-turbo | 21 s | 198 s |
-| Notulen, Qwen3-4B Q4_K_M | 48 s | ~200 s |
+| Transcription (Whisper large-v3-turbo) | **21 s** | 198 s |
+| Notulen (Qwen3-4B Q4_K_M) | **48 s** | ~200 s |
 
-Estimated, not yet measured: a 1-hour meeting needs about 5 minutes after you stop, on that GPU.
+A 1-hour meeting needs about 5 minutes after you stop on that GPU (estimated, not yet measured).
+
+## Get started
+
+**Requirements:** Windows 10 2004+ or Windows 11 (x64), 8 GB RAM (16 GB recommended), about 6 GB of free disk. An NVIDIA GPU is optional and makes transcription about 9x faster.
+
+1. Get `Lariksa-portable.zip` from [Releases](https://github.com/daefery/lariksa/releases) (or [build it](#build-from-source)) and extract it anywhere: Documents, an external drive, no installer, no admin rights.
+2. Run `Lariksa.exe`. If Windows shows "Windows protected your PC", choose **More info → Run anyway** (the app is not code-signed yet).
+3. Click **Unduh semua** (download all) once, about 4 GB. After that Lariksa works offline.
+4. In **Pengaturan**, add your colleagues' names and team jargon to the glossary.
+5. Tell participants the meeting is recorded, press **Rekam**, and **Selesai** when you're done.
+
+Everything (models, runtime and your meetings in `data/`) lives in that one folder. Copy it to another laptop and your meetings come with it.
+
+## Architecture
+
+![Architecture: Windows audio feeds the recorder, then transcription (Whisper on CTranslate2) and notulen (llama-server on Vulkan), then exports; a service worker, SQLite with full-text search, pinned downloads and a pywebview UI support them.](docs/assets/architecture.png)
+
+| Module | Responsibility |
+|---|---|
+| `recorder.py`, `audio.py` | WASAPI two-track capture, 16 kHz mono, wall-clock padding, crash repair |
+| `transcribe.py`, `hardware.py` | faster-whisper with Indonesian defaults; CUDA or CPU choice |
+| `transcript.py` | Utterances, track merge, echo removal |
+| `language.py` | Which language the notulen is written in |
+| `notulen.py`, `llm.py` | Prompts, JSON schema, map-reduce for long meetings; llama-server lifecycle and GPU choice |
+| `pipeline.py` | Transcribe then summarise, with injected engines |
+| `store.py` | SQLite + FTS5 search, settings, glossary |
+| `service.py`, `bridge.py`, `app.py` | Worker queue, downloads, recovery; JavaScript API; window |
+| `catalog.py` | Pinned, SHA-256-verified, resumable downloads |
+| `ui/` | HTML/CSS/JS with the Lariksa Brand Kit tokens, Plus Jakarta Sans, DM Mono |
 
 ## Build from source
 
@@ -44,7 +105,7 @@ On Windows, with no system Python needed (uv and Python are fetched into `.tools
 powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
 
-This runs the tests and produces `dist\Lariksa\Lariksa.exe` and `dist\Lariksa-portable.zip` (~96 MB). Models (~4 GB) download inside the app on first run, pinned and SHA-256 verified.
+This runs the tests and produces `dist\Lariksa\Lariksa.exe` and `dist\Lariksa-portable.zip` (~96 MB). Models download inside the app on first run.
 
 Develop:
 
@@ -54,30 +115,16 @@ packaging\dev.cmd run pytest -q
 packaging\dev.cmd run python -m lariksa.app
 ```
 
-On Linux or WSL everything except the recorder and the window runs, which is enough for the tests and the pipeline:
+On Linux or WSL everything except the recorder and the window runs, which covers the tests and the pipeline:
 
 ```bash
 uv sync
 uv run pytest -q                          # 69 tests; the WASAPI test runs only on Windows
 uv run python scripts/preview.py out/     # UI screenshots in headless Chrome with a stub API
+uv run --with pyoxipng python docs/visuals/render.py   # regenerate the README visuals
 ```
 
 Bench scripts in `scripts/`: `bench_asr.py` (Whisper settings side by side), `bench_notulen.py`, `bench_llm.py`, and `smoke.py` (the full pipeline through the service, no UI).
-
-## Layout
-
-| Module | Responsibility |
-|---|---|
-| `recorder.py`, `audio.py` | WASAPI two-track capture, 16 kHz mono, wall-clock padding, crash repair |
-| `transcribe.py`, `hardware.py` | faster-whisper with Indonesian defaults; CUDA or CPU choice |
-| `transcript.py` | Utterances, track merge, echo removal |
-| `language.py` | Which language the notulen is written in |
-| `notulen.py`, `llm.py` | Prompts, schema, map-reduce for long meetings; llama-server lifecycle and device choice |
-| `pipeline.py` | Transcribe then summarise, with injected engines |
-| `store.py` | SQLite + FTS5 search, settings, glossary |
-| `service.py`, `bridge.py`, `app.py` | Worker queue, downloads, recovery; JavaScript API; window |
-| `catalog.py` | Pinned, hash-verified, resumable downloads |
-| `ui/` | Brand Kit v1.0 tokens, Plus Jakarta Sans, DM Mono |
 
 ## Privacy and consent
 

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="brand.css">
+<style>
+body{width:1600px;height:760px;padding:64px 72px}
+h2{font-size:40px;letter-spacing:-1.4px;font-weight:800;margin-top:10px}
+.lede{font-size:19px;color:var(--muted);margin-top:10px}
+.lanes{display:grid;grid-template-columns:1fr 46px 1fr 46px 1fr 46px 1fr;align-items:stretch;margin-top:44px}
+.step{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px 26px 24px;display:flex;flex-direction:column;gap:14px;position:relative}
+.step.during{background:var(--forest);border-color:var(--forest);color:#F2F5EF}
+.step.during .k{color:#BACABF}
+.step.done{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.step.done .k{color:#3a4d40}
+.num{font-family:"DM Mono",monospace;font-size:14px;opacity:.65}
+.step h3{font-size:25px;letter-spacing:-.6px}
+.k{font-size:15.5px;line-height:1.55;color:var(--muted)}
+.when{position:absolute;top:-13px;left:22px;font-size:12px;letter-spacing:.12em;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.during .when{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.tracks{display:grid;gap:8px;margin-top:2px}
+.track{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.track .wave{flex:1;height:26px;border-radius:7px;background:rgba(201,242,122,.14);position:relative;overflow:hidden}
+.track .wave i{position:absolute;bottom:4px;width:4px;border-radius:2px;background:var(--lime)}
+.pill{display:inline-flex;font-family:"DM Mono",monospace;font-size:13px;padding:5px 10px;border-radius:8px;background:var(--sage);color:var(--forest);width:fit-content}
+.during .pill{background:rgba(255,255,255,.1);color:#E3EADF}
+.done .pill{background:rgba(23,36,30,.1);color:var(--ink)}
+.lines{display:grid;gap:7px;font-size:14px;line-height:1.4}
+.lines div{background:var(--paper);border-radius:9px;padding:8px 10px}
+.lines b{color:var(--focus)}
+.out{display:grid;gap:8px;font-size:14.5px;font-weight:600}
+.out div{display:flex;justify-content:space-between;background:rgba(255,255,255,.55);border-radius:10px;padding:9px 12px}
+.out span{font-weight:400;opacity:.75}
+.arrow{display:flex;align-items:center;justify-content:center}
+.arrow svg{width:30px;height:30px}
+.time{margin-top:auto;font-family:"DM Mono",monospace;font-size:14px;display:flex;justify-content:space-between;border-top:1px dashed var(--line);padding-top:12px}
+.during .time{border-top-color:#3b5244}
+.done .time{border-top-color:rgba(23,36,30,.2)}
+.foot{display:flex;gap:36px;margin-top:34px;font-size:16px;color:var(--muted)}
+.foot b{color:var(--forest)}
+</style></head>
+<body>
+<div class="eyebrow">How it works</div>
+<h2>Record during the call. Everything else happens after you hang up.</h2>
+<p class="lede">One job at a time on your own hardware: the transcription model is unloaded before the notulen model starts, so an 8 GB laptop copes.</p>
+<div class="lanes">
+  <div class="step during"><span class="when">DURING THE CALL</span>
+    <div class="num">01</div><h3>Record two tracks</h3>
+    <p class="k">Your mic and the meeting audio from the speakers are saved separately. No AI runs yet, so the call stays smooth.</p>
+    <div class="tracks">
+      <div class="track">Saya<span class="wave" id="w1"></span></div>
+      <div class="track">Peserta<span class="wave" id="w2"></span></div>
+    </div>
+    <div class="time"><span>WASAPI</span><span>16 kHz mono</span></div>
+  </div>
+  <div class="arrow"><svg viewBox="0 0 24 24"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="#467A57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="step"><span class="when">AFTER YOU STOP</span>
+    <div class="num">02</div><h3>Transcribe</h3>
+    <p class="k">Whisper turns both tracks into text, merges them by time and drops the mic's echo of the speakers.</p>
+    <div class="lines">
+      <div><b>Peserta</b> Bug login Android masih ada, fix-nya Rabu.</div>
+      <div><b>Saya</b> Oke, rilis mundur ke Jumat.</div>
+    </div>
+    <span class="pill">Whisper large-v3-turbo</span>
+    <div class="time"><span>10-min call</span><span>21 s on GPU</span></div>
+  </div>
+  <div class="arrow"><svg viewBox="0 0 24 24"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="#467A57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="step"><span class="when">AFTER YOU STOP</span>
+    <div class="num">03</div><h3>Write the notulen</h3>
+    <p class="k">A local LLM fills a fixed structure in the meeting's own language. Names come from your glossary.</p>
+    <div class="out" style="font-weight:500">
+      <div style="background:var(--paper)">Summary · Decisions</div>
+      <div style="background:var(--paper)">Action items · owner · due</div>
+      <div style="background:var(--paper)">Open questions</div>
+    </div>
+    <span class="pill">Qwen3-4B via llama.cpp</span>
+    <div class="time"><span>10-min call</span><span>48 s on GPU</span></div>
+  </div>
+  <div class="arrow"><svg viewBox="0 0 24 24"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="#467A57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="step done"><span class="when" style="background:var(--ink);border-color:var(--ink);color:var(--lime)">READY</span>
+    <div class="num">04</div><h3>Review &amp; share</h3>
+    <p class="k">Edit anything inline, then send it where your team works.</p>
+    <div class="out">
+      <div>WhatsApp <span>copy</span></div>
+      <div>Word <span>.docx</span></div>
+      <div>Markdown <span>.md</span></div>
+      <div>Search <span>all meetings</span></div>
+    </div>
+    <div class="time"><span>stays on disk</span><span>data/</span></div>
+  </div>
+</div>
+<div class="foot"><span>Measured on an <b>RTX 3050 Ti laptop</b>, 10 min of Indonesian speech.</span><span>CPU only: <b>~3 min</b> transcription, <b>~3 min</b> notulen.</span></div>
+<script>
+// Deterministic waveform bars (no randomness, so renders are reproducible).
+for (const [id, seed] of [["w1", 3], ["w2", 7]]) {
+  const w = document.getElementById(id);
+  for (let i = 0; i < 46; i++) {
+    const v = Math.abs(Math.sin(i * 0.61 * seed) * Math.cos(i * 0.23 + seed));
+    const h = 3 + Math.round(v * 16 * (id === "w1" && i > 28 ? 0.25 : 1));
+    const b = document.createElement("i"); b.style.left = (4 + i * 6.2) + "px"; b.style.height = h + "px"; w.append(b);
+  }
+}
+</script>
+</body></html>
