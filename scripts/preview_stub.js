@@ -17,16 +17,17 @@
   const now = new Date();
   const iso = (minsAgo) => new Date(now - minsAgo * 60000).toISOString();
 
-  const notulen = { ...sample.notulen[lang], language: lang };
+  const notulen = sample.minutes[lang];
   const transcript = sample.transcript[lang];
+  const lines = transcript.map((u, i) => ({ n: i + 1, start: u.start, speaker: u.speaker, text: u.text }));
   const LABELS = {
-    id: { summary: "Ringkasan", topics: "Pembahasan", decisions: "Keputusan", action_items: "Action items",
-      open_questions: "Pertanyaan terbuka", none: "(tidak ada)", task: "Tugas", owner: "PIC", due: "Deadline" },
-    en: { summary: "Summary", topics: "Discussion", decisions: "Decisions", action_items: "Action items",
-      open_questions: "Open questions", none: "(none)", task: "Task", owner: "Owner", due: "Due" },
+    id: { summary: "Ringkasan", highlights: "Poin penting", actions: "Action items", decisions: "Keputusan",
+      questions: "Pertanyaan terbuka", chapters: "Pembahasan", speakers: "Peserta", none: "(tidak ada)", unassigned: "Tanpa PIC" },
+    en: { summary: "Summary", highlights: "Highlights", actions: "Action items", decisions: "Decisions",
+      questions: "Open questions", chapters: "Discussion", speakers: "Speakers", none: "(none)", unassigned: "Unassigned" },
   };
   const meetings = sample.meetings.map((m) => ({
-    title: notulen.title, preview: notulen.summary, ...m, created_at: iso(m.minutes_ago),
+    title: notulen.title, preview: notulen.overview, ...m, created_at: iso(m.minutes_ago),
   }));
 
   const assets = {
@@ -54,12 +55,15 @@
         glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light" },
     };
   };
+  // A full meeting payload (as returned by the real service) can be injected for previews.
+  if (window.MEETING) meetings.unshift({ ...window.MEETING, created_at: iso(35) });
   const detail = (id) => {
+    if (window.MEETING && id === window.MEETING.id) return { ...window.MEETING, created_at: iso(35) };
     const m = meetings.find((x) => x.id === id);
     const done = m.status === "done";
     return { ...m, language: lang, labels: LABELS[lang], error: "", transcript: done ? transcript : [],
-      notulen: done ? notulen : null, timings: done ? { transcribe_s: 84, summarize_s: 71 } : {},
-      whatsapp: "", markdown: "" };
+      lines: done ? lines : [], notulen: done ? notulen : null, timings: done ? { transcribe_s: 84, summarize_s: 71 } : {},
+      has_audio: done, audio_url: done ? "about:blank" : "", whatsapp: "", markdown: "" };
   };
   const ok = async () => ({ ok: true });
   window.pywebview = {

@@ -1,6 +1,6 @@
 import pytest
 
-from lariksa.notulen import SCHEMA
+from lariksa.minutes_writer import ACTIONS_SCHEMA, OVERVIEW_SCHEMA, REVIEW_SCHEMA, TOPICS_SCHEMA
 from lariksa.pipeline import SPEAKER, Engines, process, tracks_for
 from lariksa.store import DONE, FAILED, Store
 from lariksa.transcript import ME, OTHERS, Utterance
@@ -35,12 +35,19 @@ class FakeLLM:
         return False
 
     def complete_json(self, system, user, schema):
-        assert schema is SCHEMA
+        """Answers each pass of minutes_writer like a well-behaved model, citing line L1."""
         if self.fail:
             raise RuntimeError("model crashed")
-        return {"title": "Rapat rilis", "summary": "Ok", "topics": [], "decisions": [],
-                "action_items": [{"task": "Deploy", "owner": "Budi", "due": "Jumat"}],
-                "open_questions": []}
+        if schema is TOPICS_SCHEMA:
+            return {"chapters": [{"title": "Rilis", "summary": "Tim membahas rilis.", "refs": ["L1"]}],
+                    "decisions": [{"text": "Rilis hari Jumat", "refs": ["L1"]}], "questions": []}
+        if schema is ACTIONS_SCHEMA:
+            return {"actions": [{"quote": "deploy", "kind": "will_do", "owner": "Budi", "task": "Deploy",
+                                 "due": "", "refs": ["L1"]}]}
+        if schema is REVIEW_SCHEMA:
+            return {"items": [{"id": 1, "verdict": "follow_up", "owner": "Budi", "task": "Deploy"}]}
+        assert schema is OVERVIEW_SCHEMA
+        return {"title": "Rapat rilis", "overview": "Ok", "highlights": ["Rilis Jumat"]}
 
 
 @pytest.fixture
@@ -70,7 +77,8 @@ def test_recorded_meeting_gets_merged_transcript_and_notulen(store, tmp_path):
     assert got.status == DONE
     assert [u.speaker for u in got.transcript] == [OTHERS, ME]
     assert got.title == "Rapat rilis"  # default title replaced
-    assert got.notulen.action_items[0].owner == "Budi"
+    assert got.notulen.actions[0].owner == "Budi"
+    assert got.notulen.actions[0].refs == [1]  # anchored to the transcript
     assert {"transcribe_s", "summarize_s"} <= got.timings.keys()
     assert stages[0] == "transcribing" and stages[-1] == "summarizing"
 
@@ -151,7 +159,7 @@ def test_english_speech_gives_english_notulen_even_when_audio_setting_is_indones
     english = "Good morning everyone. We will have the meeting today about testing the application."
     m, system = _run(store, tmp_path, english, setting="auto", meeting_language="id")
     assert m.notulen.language == "en"
-    assert "Write every JSON value in clear, concise English" in system
+    assert "careful meeting note-taker" in system
 
 
 def test_indonesian_speech_gives_indonesian_notulen(store, tmp_path):

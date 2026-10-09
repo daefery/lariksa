@@ -46,15 +46,18 @@ README_SCENES = {
 }
 
 
-def _site(tmp: Path) -> Path:
+def _site(tmp: Path, meeting: Path | None = None) -> Path:
     site = tmp / "ui"
     shutil.copytree(UI, site)
     shutil.copy(SCRIPTS / "preview_stub.js", site / "stub.js")
     sample = (SCRIPTS / "sample_meeting.json").read_text(encoding="utf-8")
+    inject = f"window.SAMPLE = {sample};"
+    if meeting:
+        inject += f"window.MEETING = {meeting.read_text(encoding='utf-8')};"
     html = (site / "index.html").read_text(encoding="utf-8")
     html = html.replace(
         '<script src="app.js">',
-        f'<script>window.SAMPLE = {sample};</script><script src="stub.js"></script><script src="app.js">',
+        f'<script>{inject}</script><script src="stub.js"></script><script src="app.js">',
     )
     # Headless Chrome freezes CSS transitions mid-way, which shows stale
     # colours after a theme switch; turn them off for screenshots only.
@@ -63,17 +66,18 @@ def _site(tmp: Path) -> Path:
     return site
 
 
-def render(scenes: dict[str, tuple[str, int]], out: Path, scale: int) -> None:
+def render(scenes: dict[str, tuple[str, int]], out: Path, scale: int, meeting: Path | None = None,
+           width: int = 1180) -> None:
     out.mkdir(parents=True, exist_ok=True)
     chrome = shutil.which("google-chrome") or shutil.which("chromium")
     with tempfile.TemporaryDirectory() as tmp:
-        site = _site(Path(tmp))
+        site = _site(Path(tmp), meeting)
         for name, (query, height) in scenes.items():
             target = out / f"{name}.png"
             subprocess.run(
                 [chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
                  "--allow-file-access-from-files", "--virtual-time-budget=6000",
-                 f"--force-device-scale-factor={scale}", f"--window-size=1180,{height}",
+                 f"--force-device-scale-factor={scale}", f"--window-size={width},{height}",
                  f"--screenshot={target}", f"file://{site / 'index.html'}?{query}"],
                 check=True, capture_output=True,
             )
@@ -84,8 +88,14 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("out", type=Path, nargs="?", default=Path("preview"))
     p.add_argument("--readme", action="store_true", help="render the README screenshot set at 2x")
+    p.add_argument("--meeting", type=Path, help="a meeting payload JSON to open (real data stays local)")
+    p.add_argument("--height", type=int, default=1100)
+    p.add_argument("--width", type=int, default=1440)
     a = p.parse_args()
-    if a.readme:
+    if a.meeting:
+        render({"meeting-notulen": ("s=home&open=card", a.height), "meeting-transcript": ("s=home&open=card&tab=transcript", a.height)},
+               a.out, scale=1, meeting=a.meeting, width=a.width)
+    elif a.readme:
         render(README_SCENES, a.out, scale=2)
     else:
         render(SCENES, a.out, scale=1)

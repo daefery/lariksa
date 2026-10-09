@@ -17,7 +17,7 @@ from .service import IMPORT_TYPES, LariksaService
 
 #: pywebview's file-type filters must match ``^[\w ]+\(\*.ext(;\*.ext)*\)$``,
 #: so no punctuation in the description ("Audio/Video" raises ValueError).
-IMPORT_FILTER = f"Audio dan video ({';'.join(f'*{ext}' for ext in IMPORT_TYPES)})"
+IMPORT_FILTER = f"Rekaman atau transkrip ({';'.join(f'*{ext}' for ext in IMPORT_TYPES)})"
 EXPORT_FILTERS = {"docx": "Word (*.docx)", "md": "Markdown (*.md)"}
 
 

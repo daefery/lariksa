@@ -134,9 +134,12 @@ async function renderMeeting(resetTab = false) {
     err.classList.remove("hidden");
   } else err.classList.add("hidden");
 
-  if (resetTab) selectTab("notulen");
+  if (resetTab) { selectTab("notulen"); $("m-find").value = ""; }
   if (!state.dirty) renderNotulen(m);
   renderTranscript(m);
+  renderSide(m);
+  $("regen").disabled = busy || !m.transcript.length;
+  applyFind();
 }
 
 function updateProgress() {
@@ -154,9 +157,51 @@ function updateProgress() {
   bar.querySelector("span").textContent = value ? `${label} · ${Math.round(value * 100)}%` : label;
 }
 
-function editable(tag, text, onChange, attrs = {}) {
+function editable(tag, text, attrs = {}) {
   return el(tag, { ...attrs, class: `editable ${attrs.class || ""}`, contenteditable: "true", spellcheck: "false",
-    oninput: () => { state.dirty = true; onChange(); } }, text);
+    oninput: () => { state.dirty = true; } }, text);
+}
+
+// ---------------------------------------------------------------- people
+const AVATAR_COLORS = ["#C9F27A", "#DDE9CF", "#BFE3D0", "#F2E2B8", "#D8E4F2", "#EAD6E6", "#E2DCCF"];
+function initials(name) {
+  const parts = (name || "?").replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+function colorFor(name) {
+  let h = 0;
+  for (const c of name || "") h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function avatar(name) {
+  return el("span", { class: "avatar", style: `background:${colorFor(name)}`, "aria-hidden": "true" }, initials(name));
+}
+
+// ---------------------------------------------------------------- time anchors
+function tsChip(seconds, refs) {
+  // Items without an anchor (notulen from the old format) get no chip: "00:00" would be a lie.
+  if (!refs || !refs.length) return null;
+  return el("button", { class: "ts", title: "Lompat ke momen ini",
+    onclick: (e) => { e.stopPropagation(); jumpTo(seconds, refs[0]); } }, clock(seconds));
+}
+
+function jumpTo(seconds, lineNo) {
+  selectTab("transcript");
+  const row = document.querySelector(`#tab-transcript [data-line="${lineNo}"]`) ||
+    [...document.querySelectorAll("#tab-transcript [data-start]")].reverse().find((r) => +r.dataset.start <= seconds + 0.5);
+  if (row) {
+    row.scrollIntoView({ block: "center", behavior: "smooth" });
+    row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+  }
+  const audio = $("audio");
+  if (state.meeting?.audio_url && audio.src) { audio.currentTime = Math.max(0, seconds - 1); audio.play().catch(() => {}); }
+}
+
+// ---------------------------------------------------------------- notulen
+function sec(title, count, ...children) {
+  return el("section", { class: "sec" },
+    el("div", { class: "sec-head" }, el("h3", {}, title), count === null ? null : el("span", { class: "count" }, String(count))),
+    ...children);
 }
 
 function renderNotulen(m) {
@@ -166,42 +211,63 @@ function renderNotulen(m) {
     body.replaceChildren(el("p", { class: "lede" }, m.status === "failed" ? "Notulen belum tersedia." : "Notulen akan muncul di sini setelah rapat diproses."));
     return;
   }
-  // Headings come from the server (notulen.LABELS) in the notulen's own language.
   const t = m.labels;
-  const list = (key, items, empty) => items.length
-    ? el("ul", { "data-key": key }, items.map((x) => editable("li", x, () => {})))
-    : el("p", { class: "muted", "data-key": key }, empty);
+  const legacy = n.version < 2;
 
-  const rows = n.action_items.map((a) => el("tr", {},
-    editable("td", a.task, () => {}), editable("td", a.owner || "", () => {}, { class: a.owner ? "" : "muted" }),
-    editable("td", a.due || "", () => {}, { class: a.due ? "" : "muted" })));
+  // Action items grouped by owner, in order of first appearance.
+  const groups = new Map();
+  n.actions.forEach((a, i) => {
+    const key = a.owner || "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push([a, i]);
+  });
+  const actionBlocks = [...groups.entries()].map(([owner, items]) => el("div", { class: "owner-group" },
+    el("div", { class: "owner-head" }, avatar(owner || "?"), el("b", {}, owner || t.unassigned),
+      el("small", {}, `${items.filter(([a]) => a.done).length}/${items.length}`)),
+    ...items.map(([a, i]) => el("div", { class: `action${a.done ? " done" : ""}`, "data-i": i },
+      el("input", { type: "checkbox", checked: a.done, "aria-label": "Selesai",
+        onchange: (e) => { a.done = e.target.checked; e.target.closest(".action").classList.toggle("done", a.done); state.dirty = true; saveNotulen(); } }),
+      editable("div", a.task, { class: "task", "data-field": "task" }),
+      el("div", { class: "side" }, a.due ? el("span", { class: "due" }, a.due) : null, tsChip(a.start, a.refs))))));
 
-  body.replaceChildren(
-    el("h3", {}, t.summary), editable("p", n.summary, () => {}, { class: "summary", "data-key": "summary" }),
-    el("h3", {}, t.decisions), list("decisions", n.decisions, t.none),
-    el("h3", {}, t.action_items),
-    n.action_items.length
-      ? el("table", { class: "actions-table", id: "actions" },
-          el("thead", {}, el("tr", {}, el("th", {}, t.task.toUpperCase()), el("th", {}, t.owner.toUpperCase()), el("th", {}, t.due.toUpperCase()))),
-          el("tbody", {}, rows))
-      : el("p", { class: "muted" }, t.none),
-    el("h3", {}, t.topics), list("topics", n.topics, "-"),
-    el("h3", {}, t.open_questions), list("open_questions", n.open_questions, t.none),
-    el("p", { class: "hint" }, "Klik teks mana pun untuk mengedit. Perubahan tersimpan otomatis."));
+  const pointList = (items, kind) => el("ul", { class: `points ${kind}` }, items.map((p, i) => el("li", { "data-i": i },
+    el("span", { class: "mark" }, kind === "q" ? "?" : "✓"),
+    editable("span", p.text, { "data-field": "text" }), tsChip(p.start, p.refs))));
+
+  body.replaceChildren(...[
+    legacy ? el("div", { class: "legacy-note" }, "Notulen ini dibuat dengan versi lama. Tekan ↻ Notulen untuk membuat ulang dengan bab, waktu, dan PIC.") : null,
+    sec(t.summary, null,
+      editable("p", n.overview, { class: "overview", "data-key": "overview" }),
+      n.highlights.length ? el("ul", { class: "highlights", "data-key": "highlights" }, n.highlights.map((h) => editable("li", h))) : null),
+    sec(t.actions, n.actions.length, n.actions.length ? el("div", { id: "actions" }, actionBlocks) : el("p", { class: "muted" }, t.none)),
+    n.decisions.length ? sec(t.decisions, n.decisions.length, Object.assign(pointList(n.decisions, "d"), { id: "decisions" })) : null,
+    n.questions.length ? sec(t.questions, n.questions.length, Object.assign(pointList(n.questions, "q"), { id: "questions" })) : null,
+    n.chapters.length ? sec(t.chapters, n.chapters.length, el("div", { id: "chapters" }, n.chapters.map((c, i) =>
+      el("div", { class: "chapter", "data-i": i }, el("div", {}, tsChip(c.start, c.refs)),
+        el("div", {}, editable("h4", c.title, { "data-field": "title" }), editable("p", c.summary, { "data-field": "summary" })))))) : null,
+    el("p", { class: "hint" }, "Klik teks mana pun untuk mengedit, centang tugas yang selesai. Klik waktu untuk lompat ke momennya."),
+  ].filter(Boolean));
 }
 
 function collectNotulen() {
+  const n = state.meeting.notulen;
   const body = $("tab-notulen");
-  const items = (key) => [...body.querySelectorAll(`ul[data-key="${key}"] li`)].map((li) => li.textContent.trim()).filter(Boolean);
-  const actions = [...body.querySelectorAll("#actions tbody tr")].map((tr) => {
-    const [task, owner, due] = [...tr.children].map((td) => td.textContent.trim());
-    return { task, owner, due };
-  }).filter((a) => a.task);
+  const field = (row, name) => row.querySelector(`[data-field="${name}"]`)?.textContent.trim() ?? "";
+  const actions = [...body.querySelectorAll("#actions .action")].map((row) => {
+    const a = n.actions[+row.dataset.i];
+    return { task: field(row, "task"), owner: a.owner, due: a.due, done: row.querySelector("input").checked };
+  });
+  // Keep stored order (the UI groups by owner; the server matches items by position).
+  const ordered = n.actions.map((_, i) => actions[[...body.querySelectorAll("#actions .action")].findIndex((r) => +r.dataset.i === i)]).filter(Boolean);
+  const points = (id) => [...body.querySelectorAll(`#${id} li`)].map((li) => ({ text: field(li, "text") }));
   return {
-    title: state.meeting.notulen.title,
-    summary: body.querySelector('[data-key="summary"]')?.textContent.trim() || "",
-    decisions: items("decisions"), topics: items("topics"), open_questions: items("open_questions"),
-    action_items: actions,
+    title: n.title,
+    overview: body.querySelector('[data-key="overview"]')?.textContent.trim() || "",
+    highlights: [...body.querySelectorAll('[data-key="highlights"] li')].map((li) => li.textContent.trim()).filter(Boolean),
+    actions: ordered,
+    ...(body.querySelector("#decisions") ? { decisions: points("decisions") } : {}),
+    ...(body.querySelector("#questions") ? { questions: points("questions") } : {}),
+    ...(body.querySelector("#chapters") ? { chapters: [...body.querySelectorAll("#chapters .chapter")].map((c) => ({ title: field(c, "title"), summary: field(c, "summary") })) } : {}),
   };
 }
 
@@ -213,20 +279,108 @@ async function saveNotulen() {
   if (fresh) state.meeting = fresh;
 }
 
+// ---------------------------------------------------------------- side rail
+function renderSide(m) {
+  const n = m.notulen;
+  const toc = $("side-chapters");
+  toc.replaceChildren(...(n?.chapters?.length ? [el("h5", {}, m.labels.chapters),
+    el("ul", { class: "toc" }, n.chapters.map((c) => el("li", {}, el("button", { "data-start": c.start, onclick: () => jumpTo(c.start, c.refs[0]) },
+      el("time", {}, clock(c.start)), el("span", {}, c.title)))))] : []));
+
+  const spk = $("side-speakers");
+  const stats = n?.speakers?.length ? n.speakers : [];
+  spk.replaceChildren(...(stats.length > 1 ? [el("h5", {}, m.labels.speakers), el("div", { class: "spk" },
+    stats.slice(0, 10).flatMap((s) => [el("div", {}, avatar(s.name), el("span", { class: "name", title: s.name }, s.name),
+      el("span", { class: "pct" }, `${Math.round(s.share * 100)}%`), el("span", { class: "bar" }, el("b", { style: `width:${Math.max(2, s.share * 100)}%` })))]))] : []));
+
+  const player = $("player"), audio = $("audio");
+  player.classList.toggle("hidden", !m.audio_url);
+  if (m.audio_url && audio.dataset.src !== m.audio_url) {
+    audio.dataset.src = m.audio_url;
+    audio.src = m.audio_url;
+    const total = m.duration || 0;
+    $("t-total").textContent = clock(total);
+    $("scrub-marks").replaceChildren(...(n?.chapters || []).map((c) => el("i", { style: `left:${total ? (c.start / total) * 100 : 0}%`, title: c.title })));
+  }
+}
+
+function wirePlayer() {
+  const audio = $("audio");
+  $("play").addEventListener("click", () => (audio.paused ? audio.play() : audio.pause()));
+  audio.addEventListener("play", () => ($("play").textContent = "❚❚"));
+  audio.addEventListener("pause", () => ($("play").textContent = "▶"));
+  audio.addEventListener("timeupdate", () => {
+    const total = audio.duration || state.meeting?.duration || 0;
+    $("t-now").textContent = clock(audio.currentTime);
+    $("scrub-fill").style.width = `${total ? (audio.currentTime / total) * 100 : 0}%`;
+    // Follow along: highlight the transcript turn and chapter being played.
+    const rows = [...document.querySelectorAll("#tab-transcript [data-start]")];
+    const now = rows.filter((r) => +r.dataset.start <= audio.currentTime).pop();
+    rows.forEach((r) => r.classList.toggle("playing", r === now));
+    const chapters = [...document.querySelectorAll(".toc button")];
+    const ch = chapters.filter((b) => +b.dataset.start <= audio.currentTime).pop();
+    chapters.forEach((b) => b.classList.toggle("now", b === ch));
+  });
+  $("scrub").addEventListener("click", (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const total = audio.duration || state.meeting?.duration || 0;
+    audio.currentTime = ((e.clientX - r.left) / r.width) * total;
+    audio.play().catch(() => {});
+  });
+}
+
+// ---------------------------------------------------------------- transcript
 function renderTranscript(m) {
   const body = $("tab-transcript");
-  if (!m.transcript.length) {
+  if (!m.lines?.length) {
     body.replaceChildren(el("p", { class: "lede" }, "Transkrip akan muncul di sini."));
     return;
   }
-  const turns = [];
-  for (const u of m.transcript) {
-    const last = turns[turns.length - 1];
-    if (last && last.speaker === u.speaker && u.start - last.end < 4) { last.text += " " + u.text; last.end = u.end; }
-    else turns.push({ ...u });
+  const chapters = (m.notulen?.chapters || []).slice().sort((a, b) => a.start - b.start);
+  const out = [];
+  let ci = 0;
+  for (const line of m.lines) {
+    while (ci < chapters.length && chapters[ci].refs.length && chapters[ci].refs[0] <= line.n) {
+      out.push(el("div", { class: "chapter-break" }, el("time", {}, clock(chapters[ci].start)), chapters[ci].title));
+      ci++;
+    }
+    out.push(el("div", { class: `turn ${line.speaker === "Saya" ? "me" : ""}`, "data-line": line.n, "data-start": line.start },
+      el("time", { onclick: () => jumpTo(line.start, line.n) }, clock(line.start)),
+      el("div", {}, el("div", { class: "who" }, line.speaker), el("p", {}, line.text))));
   }
-  body.replaceChildren(...turns.map((t) => el("div", { class: `turn ${t.speaker === "Saya" ? "me" : ""}` },
-    el("time", {}, clock(t.start)), el("div", {}, el("div", { class: "who" }, t.speaker), el("p", {}, t.text)))));
+  body.replaceChildren(...out);
+}
+
+// ---------------------------------------------------------------- find in meeting
+function applyFind() {
+  const q = $("m-find").value.trim().toLowerCase();
+  document.querySelectorAll("#view-meeting mark").forEach((mk) => mk.replaceWith(document.createTextNode(mk.textContent)));
+  document.querySelectorAll("#tab-transcript .turn, #tab-notulen .action, #tab-notulen .points li, #tab-notulen .chapter")
+    .forEach((n) => (n.style.display = ""));
+  if (!q) return;
+  if (q.length < 2) return;
+  let first = null;
+  const scope = $("tab-transcript").classList.contains("hidden") ? $("tab-notulen") : $("tab-transcript");
+  scope.querySelectorAll(".turn, .action, .points li, .chapter").forEach((node) => {
+    const hit = node.textContent.toLowerCase().includes(q);
+    node.style.display = hit ? "" : "none";
+    if (hit) { highlight(node, q); first = first || node; }
+  });
+  first?.scrollIntoView({ block: "nearest" });
+}
+
+function highlight(node, q) {
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  const hits = [];
+  while (walker.nextNode()) if (walker.currentNode.nodeValue.toLowerCase().includes(q)) hits.push(walker.currentNode);
+  for (const t of hits) {
+    const i = t.nodeValue.toLowerCase().indexOf(q);
+    const mid = t.splitText(i);
+    mid.splitText(q.length);
+    const mk = document.createElement("mark");
+    mk.textContent = mid.nodeValue;
+    mid.replaceWith(mk);
+  }
 }
 
 function selectTab(tab) {
@@ -368,7 +522,7 @@ async function poll() {
 // ---------------------------------------------------------------- wiring
 function wire() {
   document.querySelectorAll(".nav").forEach((b) => b.addEventListener("click", async () => { await saveNotulen(); show(b.dataset.view); }));
-  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.tab)));
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { selectTab(b.dataset.tab); applyFind(); }));
   $("back").addEventListener("click", async () => { await saveNotulen(); show("home"); });
   $("record").addEventListener("click", toggleRecord);
   $("setup-go").addEventListener("click", () => downloadAssets(state.status.needed.filter((k) => !state.status.assets[k].installed)));
@@ -393,6 +547,12 @@ function wire() {
     if (!r.ok) toast(r.error); else loadMeetings();
   });
   $("tab-notulen").addEventListener("focusout", () => saveNotulen());
+  $("m-find").addEventListener("input", () => applyFind());
+  $("regen").addEventListener("click", async () => {
+    if (!confirm("Tulis ulang notulen dari transkrip? Suntingan pada notulen ini akan diganti.")) return;
+    await retry(true);
+  });
+  wirePlayer();
   $("copy-wa").addEventListener("click", async () => {
     await saveNotulen();
     const m = await api().meeting(state.current);

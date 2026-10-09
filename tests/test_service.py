@@ -42,6 +42,7 @@ def test_import_runs_through_worker(svc, tmp_path):
     assert m.transcript[0].text == "Impor"
     detail = svc.meeting(m.id)
     assert "Deploy" in detail["markdown"] and detail["whatsapp"].startswith("*")
+    assert detail["lines"][0]["n"] == 1 and detail["lines"][0]["speaker"] == "Pembicara"
 
 
 def test_worker_survives_an_engine_setup_error(tmp_path, monkeypatch):
@@ -65,7 +66,7 @@ def test_worker_survives_an_engine_setup_error(tmp_path, monkeypatch):
 
 
 def test_import_rejects_unknown_type(svc, tmp_path):
-    bad = tmp_path / "notes.txt"
+    bad = tmp_path / "notes.pdf"
     bad.write_text("x")
     assert not svc.import_audio(str(bad))["ok"]
 
@@ -146,7 +147,7 @@ def test_rename_and_settings(svc, tmp_path):
     assert svc.store.settings()["notulen_language"] == "auto"
 
 
-def test_editing_an_english_notulen_keeps_it_english(svc, tmp_path):
+def test_edits_keep_anchors_language_and_can_tick_actions(svc, tmp_path):
     src = tmp_path / "a.wav"
     src.write_bytes(b"x" * 4096)
     mid = svc.import_audio(str(src))["meeting_id"]
@@ -154,10 +155,33 @@ def test_editing_an_english_notulen_keeps_it_english(svc, tmp_path):
     m = svc.store.get(mid)
     m.notulen.language = "en"
     svc.store.update(mid, notulen=m.notulen)
-    # The UI sends edited fields only, without the language.
-    svc.save_notulen(mid, {"title": "T", "summary": "Edited", "topics": [], "decisions": [],
-                           "action_items": [], "open_questions": []})
+    # The UI sends text fields only; it cannot move anchors or change the language.
+    assert svc.save_notulen(mid, {"overview": "Edited", "actions": [
+        {"task": "Deploy v2", "owner": "Budi", "due": "Friday", "done": True, "start": 999, "refs": [42]}]})["ok"]
+    got = svc.store.get(mid).notulen
+    assert got.overview == "Edited" and got.language == "en"
+    a = got.actions[0]
+    assert (a.task, a.owner, a.due, a.done, a.refs) == ("Deploy v2", "Budi", "Friday", True, [1])
     detail = svc.meeting(mid)
-    assert detail["notulen"]["language"] == "en"
-    assert detail["labels"]["summary"] == "Summary"
-    assert "## Summary" in detail["markdown"]
+    assert detail["labels"]["summary"] == "Summary" and "## Summary" in detail["markdown"]
+    assert "- [x] **Budi**: Deploy v2" in detail["markdown"]
+    # Deleting an item in the UI (shorter list) removes it.
+    svc.save_notulen(mid, {"actions": []})
+    assert svc.store.get(mid).notulen.actions == []
+
+
+def test_importing_a_readai_transcript_skips_transcription(svc, tmp_path):
+    src = tmp_path / "standup.txt"
+    src.write_text("0:00 - Budi Santoso\nAku deploy hari Jumat ya.\n\n0:15 - Sari\nOke, aku testing.\n", encoding="utf-8")
+    mid = svc.import_audio(str(src))["meeting_id"]
+    m = wait_status(svc, mid, {DONE, FAILED})
+    assert m.status == DONE, m.error
+    assert [u.speaker for u in m.transcript] == ["Budi Santoso", "Sari"]
+    assert m.duration == 25 and not svc.meeting(mid)["has_audio"]
+
+
+def test_importing_an_empty_transcript_is_refused(svc, tmp_path):
+    src = tmp_path / "empty.vtt"
+    src.write_text("WEBVTT\n\n", encoding="utf-8")
+    assert not svc.import_audio(str(src))["ok"]
+    assert svc.meetings() == []

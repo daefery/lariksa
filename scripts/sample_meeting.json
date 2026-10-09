@@ -4,51 +4,404 @@
     "id": {
       "title": "Sinkronisasi rilis aplikasi v2.3",
       "summary": "Tim sepakat rilis v2.3 dimundurkan ke Jumat karena bug login di Android belum selesai. QA butuh dua hari untuk regression test setelah fix masuk. Marketing tetap menyiapkan materi launch, tapi jadwal posting digeser mengikuti tanggal rilis.",
-      "topics": ["Status bug login Android dan estimasi fix", "Kapasitas QA untuk regression test", "Penyesuaian jadwal materi launch"],
-      "decisions": ["Rilis v2.3 dimundurkan ke Jumat, 16 Oktober", "Fitur dark mode ditunda ke v2.4"],
-      "action_items": [
-        {"task": "Fix bug login Android dan push ke staging", "owner": "Budi", "due": "Rabu"},
-        {"task": "Regression test penuh setelah fix masuk", "owner": "Sari", "due": "Kamis"},
-        {"task": "Update jadwal posting launch di content calendar", "owner": "Dewi", "due": ""}
+      "topics": [
+        "Status bug login Android dan estimasi fix",
+        "Kapasitas QA untuk regression test",
+        "Penyesuaian jadwal materi launch"
       ],
-      "open_questions": ["Apakah perlu hotfix untuk pengguna iOS versi lama?"]
+      "decisions": [
+        "Rilis v2.3 dimundurkan ke Jumat, 16 Oktober",
+        "Fitur dark mode ditunda ke v2.4"
+      ],
+      "action_items": [
+        {
+          "task": "Fix bug login Android dan push ke staging",
+          "owner": "Budi",
+          "due": "Rabu"
+        },
+        {
+          "task": "Regression test penuh setelah fix masuk",
+          "owner": "Sari",
+          "due": "Kamis"
+        },
+        {
+          "task": "Update jadwal posting launch di content calendar",
+          "owner": "Dewi",
+          "due": ""
+        }
+      ],
+      "open_questions": [
+        "Apakah perlu hotfix untuk pengguna iOS versi lama?"
+      ]
     },
     "en": {
       "title": "Version 2.3 release plan review",
       "summary": "The team moved the v2.3 release to Friday because the Android login bug is still open. QA needs two days of regression testing once the fix lands. Marketing keeps preparing launch material, with posting dates following the new release date.",
-      "topics": ["Android login bug status and fix estimate", "QA capacity for regression testing", "Adjusting the launch content schedule"],
-      "decisions": ["Release v2.3 moves to Friday, October 16", "Dark mode is deferred to v2.4"],
-      "action_items": [
-        {"task": "Fix the Android login bug and push to staging", "owner": "Budi", "due": "Wednesday"},
-        {"task": "Full regression test once the fix lands", "owner": "Sari", "due": "Thursday"},
-        {"task": "Update launch posts in the content calendar", "owner": "Dewi", "due": ""}
+      "topics": [
+        "Android login bug status and fix estimate",
+        "QA capacity for regression testing",
+        "Adjusting the launch content schedule"
       ],
-      "open_questions": ["Do we need a hotfix for users on older iOS versions?"]
+      "decisions": [
+        "Release v2.3 moves to Friday, October 16",
+        "Dark mode is deferred to v2.4"
+      ],
+      "action_items": [
+        {
+          "task": "Fix the Android login bug and push to staging",
+          "owner": "Budi",
+          "due": "Wednesday"
+        },
+        {
+          "task": "Full regression test once the fix lands",
+          "owner": "Sari",
+          "due": "Thursday"
+        },
+        {
+          "task": "Update launch posts in the content calendar",
+          "owner": "Dewi",
+          "due": ""
+        }
+      ],
+      "open_questions": [
+        "Do we need a hotfix for users on older iOS versions?"
+      ]
     }
   },
   "transcript": {
     "id": [
-      {"speaker": "Peserta", "start": 2, "end": 9, "text": "Oke, kita mulai ya. Jadi update dari tim mobile gimana, Bud?"},
-      {"speaker": "Peserta", "start": 10, "end": 24, "text": "Bug login di Android masih ada, root cause-nya udah ketemu, di token refresh. Fix-nya kira-kira selesai Rabu."},
-      {"speaker": "Saya", "start": 25, "end": 33, "text": "Berarti QA baru bisa mulai Kamis ya. Sari, regression test butuh berapa lama?"},
-      {"speaker": "Peserta", "start": 34, "end": 44, "text": "Minimal dua hari kalau full. Jadi paling cepat rilis Jumat."},
-      {"speaker": "Saya", "start": 45, "end": 56, "text": "Oke, kita sepakat rilis mundur ke Jumat. Dark mode kita pindah ke v2.4 aja biar nggak nambah risiko."},
-      {"speaker": "Peserta", "start": 58, "end": 66, "text": "Siap. Dewi, nanti jadwal posting launch tolong disesuaikan ya."}
+      {
+        "speaker": "Peserta",
+        "start": 2,
+        "end": 9,
+        "text": "Oke, kita mulai ya. Jadi update dari tim mobile gimana, Bud?"
+      },
+      {
+        "speaker": "Peserta",
+        "start": 10,
+        "end": 24,
+        "text": "Bug login di Android masih ada, root cause-nya udah ketemu, di token refresh. Fix-nya kira-kira selesai Rabu."
+      },
+      {
+        "speaker": "Saya",
+        "start": 25,
+        "end": 33,
+        "text": "Berarti QA baru bisa mulai Kamis ya. Sari, regression test butuh berapa lama?"
+      },
+      {
+        "speaker": "Peserta",
+        "start": 34,
+        "end": 44,
+        "text": "Minimal dua hari kalau full. Jadi paling cepat rilis Jumat."
+      },
+      {
+        "speaker": "Saya",
+        "start": 45,
+        "end": 56,
+        "text": "Oke, kita sepakat rilis mundur ke Jumat. Dark mode kita pindah ke v2.4 aja biar nggak nambah risiko."
+      },
+      {
+        "speaker": "Peserta",
+        "start": 58,
+        "end": 66,
+        "text": "Siap. Dewi, nanti jadwal posting launch tolong disesuaikan ya."
+      }
     ],
     "en": [
-      {"speaker": "Peserta", "start": 2, "end": 9, "text": "Okay, let's start. Budi, what's the update from the mobile team?"},
-      {"speaker": "Peserta", "start": 10, "end": 24, "text": "The Android login bug is still open. We found the root cause in the token refresh, the fix should be done by Wednesday."},
-      {"speaker": "Saya", "start": 25, "end": 33, "text": "So QA can only start on Thursday. Sari, how long does a regression test take?"},
-      {"speaker": "Peserta", "start": 34, "end": 44, "text": "At least two days for a full run, so Friday at the earliest."},
-      {"speaker": "Saya", "start": 45, "end": 56, "text": "Okay, we agree to move the release to Friday, and dark mode goes to v2.4 to keep the risk down."}
+      {
+        "speaker": "Peserta",
+        "start": 2,
+        "end": 9,
+        "text": "Okay, let's start. Budi, what's the update from the mobile team?"
+      },
+      {
+        "speaker": "Peserta",
+        "start": 10,
+        "end": 24,
+        "text": "The Android login bug is still open. We found the root cause in the token refresh, the fix should be done by Wednesday."
+      },
+      {
+        "speaker": "Saya",
+        "start": 25,
+        "end": 33,
+        "text": "So QA can only start on Thursday. Sari, how long does a regression test take?"
+      },
+      {
+        "speaker": "Peserta",
+        "start": 34,
+        "end": 44,
+        "text": "At least two days for a full run, so Friday at the earliest."
+      },
+      {
+        "speaker": "Saya",
+        "start": 45,
+        "end": 56,
+        "text": "Okay, we agree to move the release to Friday, and dark mode goes to v2.4 to keep the risk down."
+      }
     ]
   },
   "meetings": [
-    {"id": "m1", "minutes_ago": 35, "duration": 2860, "status": "done", "source": "record", "action_count": 3},
-    {"id": "m2", "title": "1:1 dengan Sari", "minutes_ago": 1560, "duration": 1710, "status": "done", "source": "record", "action_count": 2,
-     "preview": "Membahas rencana pengembangan karier Sari dan target Q4, termasuk pelatihan automation testing."},
-    {"id": "m3", "title": "Rapat 9 Okt 2026, 13:00", "minutes_ago": 4, "duration": 1240, "status": "summarizing", "source": "record", "action_count": 0, "preview": ""},
-    {"id": "m4", "title": "Review budget Q4", "minutes_ago": 5760, "duration": 3520, "status": "done", "source": "import", "action_count": 4,
-     "preview": "Anggaran pemasaran Q4 disetujui dengan pemotongan 10% untuk iklan berbayar."}
-  ]
+    {
+      "id": "m1",
+      "minutes_ago": 35,
+      "duration": 2860,
+      "status": "done",
+      "source": "record",
+      "action_count": 3
+    },
+    {
+      "id": "m2",
+      "title": "1:1 dengan Sari",
+      "minutes_ago": 1560,
+      "duration": 1710,
+      "status": "done",
+      "source": "record",
+      "action_count": 2,
+      "preview": "Membahas rencana pengembangan karier Sari dan target Q4, termasuk pelatihan automation testing."
+    },
+    {
+      "id": "m3",
+      "title": "Rapat 9 Okt 2026, 13:00",
+      "minutes_ago": 4,
+      "duration": 1240,
+      "status": "summarizing",
+      "source": "record",
+      "action_count": 0,
+      "preview": ""
+    },
+    {
+      "id": "m4",
+      "title": "Review budget Q4",
+      "minutes_ago": 5760,
+      "duration": 3520,
+      "status": "done",
+      "source": "import",
+      "action_count": 4,
+      "preview": "Anggaran pemasaran Q4 disetujui dengan pemotongan 10% untuk iklan berbayar."
+    }
+  ],
+  "minutes": {
+    "id": {
+      "title": "Sinkronisasi rilis aplikasi v2.3",
+      "overview": "Tim sepakat rilis v2.3 dimundurkan ke Jumat karena bug login di Android belum selesai. QA butuh dua hari untuk regression test setelah fix masuk. Marketing tetap menyiapkan materi launch, tapi jadwal posting digeser mengikuti tanggal rilis.",
+      "highlights": [
+        "Status bug login Android dan estimasi fix",
+        "Kapasitas QA untuk regression test",
+        "Penyesuaian jadwal materi launch"
+      ],
+      "chapters": [
+        {
+          "title": "Status bug login Android",
+          "summary": "Tim sepakat rilis v2.3 dimundurkan ke Jumat karena bug login di Android belum selesai.",
+          "start": 2,
+          "refs": [
+            1,
+            2
+          ]
+        },
+        {
+          "title": "Kapasitas QA",
+          "summary": "QA butuh dua hari untuk regression test setelah fix masuk.",
+          "start": 25,
+          "refs": [
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Jadwal rilis dan launch",
+          "summary": "Marketing tetap menyiapkan materi launch, tapi jadwal posting digeser mengikuti tanggal rilis.",
+          "start": 45,
+          "refs": [
+            5,
+            6
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "task": "Fix bug login Android dan push ke staging",
+          "owner": "Budi",
+          "due": "Rabu",
+          "start": 10,
+          "refs": [
+            2
+          ],
+          "done": true
+        },
+        {
+          "task": "Regression test penuh setelah fix masuk",
+          "owner": "Sari",
+          "due": "Kamis",
+          "start": 34,
+          "refs": [
+            4
+          ],
+          "done": false
+        },
+        {
+          "task": "Update jadwal posting launch di content calendar",
+          "owner": "Dewi",
+          "due": "",
+          "start": 58,
+          "refs": [
+            6
+          ],
+          "done": false
+        }
+      ],
+      "decisions": [
+        {
+          "text": "Rilis v2.3 dimundurkan ke Jumat, 16 Oktober",
+          "start": 45,
+          "refs": [
+            5
+          ]
+        },
+        {
+          "text": "Fitur dark mode ditunda ke v2.4",
+          "start": 45,
+          "refs": [
+            5
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "text": "Apakah perlu hotfix untuk pengguna iOS versi lama?",
+          "start": 34,
+          "refs": [
+            4
+          ]
+        }
+      ],
+      "speakers": [
+        {
+          "name": "Peserta",
+          "seconds": 34.0,
+          "share": 0.63,
+          "turns": 3
+        },
+        {
+          "name": "Saya",
+          "seconds": 20.0,
+          "share": 0.37,
+          "turns": 2
+        }
+      ],
+      "language": "id",
+      "version": 2
+    },
+    "en": {
+      "title": "Version 2.3 release plan review",
+      "overview": "The team moved the v2.3 release to Friday because the Android login bug is still open. QA needs two days of regression testing once the fix lands. Marketing keeps preparing launch material, with posting dates following the new release date.",
+      "highlights": [
+        "Android login bug status and fix estimate",
+        "QA capacity for regression testing",
+        "Adjusting the launch content schedule"
+      ],
+      "chapters": [
+        {
+          "title": "Android login bug status",
+          "summary": "The team moved the v2.3 release to Friday because the Android login bug is still open.",
+          "start": 2,
+          "refs": [
+            1,
+            2
+          ]
+        },
+        {
+          "title": "QA capacity",
+          "summary": "QA needs two days of regression testing once the fix lands.",
+          "start": 25,
+          "refs": [
+            3,
+            4
+          ]
+        },
+        {
+          "title": "Release and launch schedule",
+          "summary": "Marketing keeps preparing launch material, with posting dates following the new release date.",
+          "start": 45,
+          "refs": [
+            5,
+            6
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "task": "Fix the Android login bug and push to staging",
+          "owner": "Budi",
+          "due": "Wednesday",
+          "start": 10,
+          "refs": [
+            2
+          ],
+          "done": true
+        },
+        {
+          "task": "Full regression test once the fix lands",
+          "owner": "Sari",
+          "due": "Thursday",
+          "start": 34,
+          "refs": [
+            4
+          ],
+          "done": false
+        },
+        {
+          "task": "Update launch posts in the content calendar",
+          "owner": "Dewi",
+          "due": "",
+          "start": 58,
+          "refs": [
+            6
+          ],
+          "done": false
+        }
+      ],
+      "decisions": [
+        {
+          "text": "Release v2.3 moves to Friday, October 16",
+          "start": 45,
+          "refs": [
+            5
+          ]
+        },
+        {
+          "text": "Dark mode is deferred to v2.4",
+          "start": 45,
+          "refs": [
+            5
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "text": "Do we need a hotfix for users on older iOS versions?",
+          "start": 34,
+          "refs": [
+            4
+          ]
+        }
+      ],
+      "speakers": [
+        {
+          "name": "Peserta",
+          "seconds": 34.0,
+          "share": 0.63,
+          "turns": 3
+        },
+        {
+          "name": "Saya",
+          "seconds": 20.0,
+          "share": 0.37,
+          "turns": 2
+        }
+      ],
+      "language": "en",
+      "version": 2
+    }
+  }
 }

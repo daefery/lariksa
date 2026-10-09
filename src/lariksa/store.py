@@ -16,7 +16,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from .notulen import Notulen, to_markdown
+from .minutes import Minutes, load_minutes
+from .minutes_render import to_markdown
 from .transcript import Utterance, as_text, from_dicts
 
 # Meeting lifecycle. "recording" is set while audio is captured; the worker
@@ -78,7 +79,7 @@ class Meeting:
     language: str = "id"
     error: str = ""
     transcript: list[Utterance] = field(default_factory=list)
-    notulen: Notulen | None = None
+    notulen: Minutes | None = None
     timings: dict = field(default_factory=dict)
 
     @property
@@ -96,8 +97,8 @@ class Meeting:
             "duration": self.duration,
             "status": self.status,
             "source": self.source,
-            "preview": (self.notulen.summary if self.notulen else "")[:220],
-            "action_count": len(self.notulen.action_items) if self.notulen else 0,
+            "preview": (self.notulen.overview if self.notulen else "")[:220],
+            "action_count": len(self.notulen.actions) if self.notulen else 0,
         }
 
     def to_dict(self) -> dict:
@@ -123,7 +124,7 @@ def _row_to_meeting(row: sqlite3.Row) -> Meeting:
         language=row["language"],
         error=row["error"],
         transcript=from_dicts(json.loads(row["transcript"])),
-        notulen=Notulen.from_dict(notulen) if notulen else None,
+        notulen=load_minutes(notulen),
         timings=json.loads(row["timings"] or "{}"),
     )
 

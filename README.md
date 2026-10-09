@@ -27,8 +27,10 @@
 
 1. **Record.** Press **Rekam**. Your microphone ("Saya") and the meeting audio from your speakers ("Peserta") are saved as two separate tracks. No AI runs during the call, so it stays smooth.
 2. **Transcribe.** Press **Selesai**. Whisper large-v3-turbo turns both tracks into text, merges them by time and drops the mic's echo of the speakers. The track tells it who spoke, so no speaker-detection model is needed.
-3. **Write the notulen.** A local LLM (Qwen3-4B via llama.cpp) fills a fixed structure: summary, decisions, action items with owner and deadline, open questions. Whisper is unloaded first, so an 8 GB laptop copes.
-4. **Review and share.** Edit anything inline, then copy it to WhatsApp or export to Word or Markdown. Every meeting is searchable.
+3. **Write the notulen.** A local LLM (Qwen3-4B via llama.cpp) reads the transcript as numbered lines and answers with line numbers, so every chapter, action item, decision and open question points back to the exact moment it came from. Code, not the model, turns those references into timestamps, matches owners to real speakers, keeps a deadline only if it was actually said, and drops anything that cites a line that does not exist. Whisper is unloaded first, so an 8 GB laptop copes.
+4. **Review and share.** Action items are grouped by owner with checkboxes; every item has a timestamp that jumps to that moment in the transcript and plays the audio from there. Chapters sit in a side rail, with talk time per speaker. Edit anything inline, then copy it to WhatsApp or export to Word or Markdown. Every meeting is searchable.
+
+Already have a transcript from Read.ai, Google Meet, Zoom or Teams? Import the `.txt` or `.vtt` and Lariksa writes its notulen from it, no audio needed.
 
 You can start the next meeting while the previous one is still processing; jobs run one at a time, in order. If the app closes mid-meeting, the recording is kept and processing resumes on the next start.
 

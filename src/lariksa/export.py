@@ -1,13 +1,13 @@
 """Exports: DOCX for the office, Markdown with the full transcript.
 
-Headings follow the notulen's language (see ``notulen.LABELS``).
+Headings follow the minutes' language (see ``minutes_render.LABELS``).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from .notulen import labels, to_markdown
+from .minutes_render import labels, to_markdown
 from .store import Meeting
 from .transcript import clock
 
@@ -23,7 +23,7 @@ def full_markdown(meeting: Meeting, *, date: str = "") -> str:
     t = labels(_language(meeting))
     parts = []
     if meeting.notulen:
-        parts.append(to_markdown(meeting.notulen, date=date))
+        parts.append(to_markdown(meeting.notulen, date=date, title=meeting.title))
     else:
         parts.append(f"# {meeting.title}\n_{date}_\n")
     if meeting.transcript:
@@ -36,7 +36,7 @@ def write_docx(meeting: Meeting, target: Path, *, date: str = "", with_transcrip
     from docx import Document
     from docx.shared import Pt, RGBColor
 
-    n = meeting.notulen
+    m = meeting.notulen
     t = labels(_language(meeting))
     doc = Document()
     style = doc.styles["Normal"]
@@ -48,36 +48,55 @@ def write_docx(meeting: Meeting, target: Path, *, date: str = "", with_transcrip
         for run in h.runs:
             run.font.color.rgb = RGBColor(*_FOREST)
 
+    def muted(paragraph, text: str) -> None:
+        run = paragraph.add_run(text)
+        run.font.color.rgb = RGBColor(*_MUTED)
+
     def bullets(items: list[str]) -> None:
         for item in items or [t["none"]]:
             doc.add_paragraph(item, style="List Bullet")
 
-    heading(n.title or meeting.title, 0)
+    heading(meeting.title or m.title or t["untitled"], 0)
     if date:
-        meta = doc.add_paragraph(date)
-        meta.runs[0].font.color.rgb = RGBColor(*_MUTED)
+        muted(doc.add_paragraph(), date)
 
     heading(t["summary"], 1)
-    doc.add_paragraph(n.summary or "-")
-    heading(t["topics"], 1)
-    bullets(n.topics)
-    heading(t["decisions"], 1)
-    bullets(n.decisions)
+    doc.add_paragraph(m.overview or "-")
+    if m.highlights:
+        bullets(m.highlights)
 
-    heading(t["action_items"], 1)
-    if n.action_items:
-        table = doc.add_table(rows=1, cols=3)
+    heading(t["actions"], 1)
+    if m.actions:
+        table = doc.add_table(rows=1, cols=4)
         table.style = "Light Grid Accent 1"
-        for cell, text in zip(table.rows[0].cells, (t["task"], t["owner"], t["due"]), strict=True):
+        for cell, text in zip(table.rows[0].cells, (t["owner"], t["task"], t["due_col"], t["time"]), strict=True):
             cell.text = text
-        for item in n.action_items:
+        for a in m.actions:
             row = table.add_row().cells
-            row[0].text, row[1].text, row[2].text = item.task, item.owner or "-", item.due or "-"
+            row[0].text = a.owner or "-"
+            row[1].text = ("✓ " if a.done else "") + a.task
+            row[2].text = a.due or "-"
+            row[3].text = clock(a.start) if a.refs else "-"
     else:
         doc.add_paragraph(t["none"])
 
-    heading(t["open_questions"], 1)
-    bullets(n.open_questions)
+    heading(t["decisions"], 1)
+    bullets([d.text for d in m.decisions])
+    if m.questions:
+        heading(t["questions"], 1)
+        bullets([q.text for q in m.questions])
+
+    if m.chapters:
+        heading(t["chapters"], 1)
+        for c in m.chapters:
+            p = doc.add_paragraph()
+            muted(p, f"{clock(c.start)}  ")
+            p.add_run(c.title).bold = True
+            doc.add_paragraph(c.summary)
+
+    if m.speakers:
+        heading(t["speakers"], 1)
+        bullets([f"{s.name}: {round(s.share * 100)}% {t['talk']}" for s in m.speakers])
 
     if with_transcript and meeting.transcript:
         doc.add_page_break()

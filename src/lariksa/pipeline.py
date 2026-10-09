@@ -14,10 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .language import AUTO, resolve
-from .notulen import write_notulen
+from .minutes import lines_from
+from .minutes_writer import write_minutes
 from .recorder import MIC_FILE, SYSTEM_FILE
 from .store import DONE, FAILED, QUEUED, SUMMARIZING, TRANSCRIBING, Store
-from .transcript import ME, OTHERS, Utterance, as_text, merge_tracks
+from .transcript import ME, OTHERS, Utterance, merge_tracks
 
 log = logging.getLogger(__name__)
 
@@ -88,8 +89,8 @@ def process(
         spoken = " ".join(u.text for u in utterances)
         language = resolve(notulen_language, spoken, fallback=meeting.language or "id")
         with engines.llm() as llm:
-            notulen = write_notulen(
-                as_text(utterances), llm.complete_json, language=language,
+            notulen = write_minutes(
+                lines_from(utterances), llm.complete_json, language=language,
                 on_progress=lambda v: progress("summarizing", v),
             )
         timings["summarize_s"] = round(time.monotonic() - started, 1)

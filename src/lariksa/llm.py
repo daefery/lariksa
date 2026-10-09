@@ -24,8 +24,11 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-#: Enough for ~36k characters of transcript plus instructions and the answer.
-CONTEXT_TOKENS = 16384
+#: A 12k-character transcript chunk is ~3.7k tokens (Indonesian chat tokenises at
+#: ~3.3 characters per token), plus ~0.6k of instructions and up to ~3k of answer.
+#: 8k instead of 16k frees enough VRAM on a 4 GB laptop GPU to hold 35/37 layers
+#: instead of 29/37 (measured, RTX 3050 Ti).
+CONTEXT_TOKENS = 8192
 
 
 class LLMError(RuntimeError):
@@ -205,30 +208,48 @@ class LocalLLM:
             _terminate(self._proc)
         self._proc = None
 
-    def complete_json(self, system: str, user: str, schema: dict) -> dict:
-        payload = {
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "temperature": 0.2,
-            "top_p": 0.9,
-            "max_tokens": 2048,
-            "response_format": {"type": "json_schema", "json_schema": {"name": "notulen", "schema": schema}},
-        }
-        try:
-            response = httpx.post(
-                f"http://127.0.0.1:{self.port}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {self._key}"},
-                timeout=httpx.Timeout(10.0, read=900.0),
-            )
-        except httpx.HTTPError as exc:
-            raise LLMError(f"Mesin AI tidak merespons: {exc}") from exc
-        if response.status_code != 200:
-            raise LLMError(f"Mesin AI error {response.status_code}: {response.text[:300]}")
-        content = response.json()["choices"][0]["message"]["content"]
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError as exc:
-            raise LLMError("Model mengembalikan JSON yang tidak valid.") from exc
+    def complete_json(self, system: str, user: str, schema: dict, *, attempts: int = 2) -> dict:
+        """One schema-constrained answer. Retries once when the output is cut off.
+
+        The grammar guarantees valid JSON only if generation finishes; when it
+        stops at max_tokens the text ends mid-string. The retry uses a lower
+        temperature and twice the token budget, which in practice yields a
+        shorter, complete answer.
+        """
+        last: Exception | None = None
+        for attempt in range(attempts):
+            payload = {
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                # The retry trades determinism for a way out of the loop that broke the first try.
+                "temperature": 0.2 if attempt == 0 else 0.5,
+                "top_p": 0.9,
+                # Small models occasionally loop ("..., L41, L41, L41") until max_tokens and the JSON
+                # never closes; penalising recent repeats breaks the loop without hurting the text.
+                "repeat_penalty": 1.1,
+                "repeat_last_n": 256,
+                # An extraction answer for a 12k-character chunk runs ~1.2k tokens;
+                # the retry gets more room, still inside the 8k context.
+                "max_tokens": 2560 if attempt == 0 else 3328,
+                "response_format": {"type": "json_schema", "json_schema": {"name": "notulen", "schema": schema}},
+            }
+            try:
+                response = httpx.post(
+                    f"http://127.0.0.1:{self.port}/v1/chat/completions",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {self._key}"},
+                    timeout=httpx.Timeout(10.0, read=900.0),
+                )
+            except httpx.HTTPError as exc:
+                raise LLMError(f"Mesin AI tidak merespons: {exc}") from exc
+            if response.status_code != 200:
+                raise LLMError(f"Mesin AI error {response.status_code}: {response.text[:300]}")
+            choice = response.json()["choices"][0]
+            try:
+                return json.loads(choice["message"]["content"])
+            except json.JSONDecodeError as exc:
+                log.warning("Model JSON invalid (finish_reason=%s, attempt %d)", choice.get("finish_reason"), attempt + 1)
+                last = exc
+        raise LLMError("Model mengembalikan JSON yang tidak valid.") from last
 
 
 def server_binary(runtime_dir: Path) -> Path:

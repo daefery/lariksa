@@ -61,19 +61,20 @@
 
       <div class="row-between">
         <div class="eyebrow">RAPAT TERBARU</div>
-        <button class="link" id="import">+ Impor rekaman</button>
+        <button class="link" id="import">+ Impor rekaman atau transkrip</button>
       </div>
       <div class="cards" id="cards"></div>
     </section>
 
     <!-- MEETING -->
-    <section id="view-meeting" class="view hidden">
+    <section id="view-meeting" class="view view-wide hidden">
       <div class="toolbar">
         <button class="link" id="back">← Kembali</button>
         <div class="actions">
           <button class="ghost" id="copy-wa">Salin untuk WhatsApp</button>
           <button class="ghost" id="export-docx">DOCX</button>
           <button class="ghost" id="export-md">Markdown</button>
+          <button class="ghost" id="regen" title="Tulis ulang notulen dari transkrip">↻ Notulen</button>
           <button class="ghost danger" id="delete">Hapus</button>
         </div>
       </div>
@@ -82,12 +83,32 @@
       <div id="m-progress" class="progress hidden"><div class="bar"><b></b></div><span></span></div>
       <div id="m-error" class="error hidden"></div>
 
-      <div class="tabs" role="tablist">
-        <button class="tab active" data-tab="notulen" role="tab">Notulen</button>
-        <button class="tab" data-tab="transcript" role="tab">Transkrip</button>
+      <div class="tabs-row">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="notulen" role="tab">Notulen</button>
+          <button class="tab" data-tab="transcript" role="tab">Transkrip</button>
+        </div>
+        <label class="find"><span aria-hidden="true">⌕</span><input id="m-find" type="search" placeholder="Cari di rapat ini" autocomplete="off"></label>
       </div>
-      <div id="tab-notulen" class="tab-body"></div>
-      <div id="tab-transcript" class="tab-body hidden"></div>
+
+      <div class="meeting-grid">
+        <div class="meeting-main">
+          <div id="tab-notulen" class="tab-body"></div>
+          <div id="tab-transcript" class="tab-body hidden"></div>
+        </div>
+        <aside class="meeting-side" id="m-side">
+          <div class="player hidden" id="player">
+            <button class="play" id="play" aria-label="Putar">▶</button>
+            <div class="track">
+              <div class="scrub" id="scrub"><b id="scrub-fill"></b><div id="scrub-marks"></div></div>
+              <div class="times"><span id="t-now">00:00</span><span id="t-total">00:00</span></div>
+            </div>
+            <audio id="audio" preload="metadata"></audio>
+          </div>
+          <div class="side-card" id="side-chapters"></div>
+          <div class="side-card" id="side-speakers"></div>
+        </aside>
+      </div>
     </section>
 
     <!-- SETTINGS -->

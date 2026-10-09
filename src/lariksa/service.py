@@ -20,7 +20,10 @@ from . import catalog
 from .audio import repair_wav
 from .hardware import detect, register_cuda_libraries
 from .llm import LocalLLM, server_binary, stop_all_servers
-from .notulen import Notulen, labels, to_markdown, to_whatsapp
+from .media import MediaServer
+from .minutes import Action, Chapter, Minutes, Point, lines_from
+from .minutes_render import labels, to_markdown, to_whatsapp
+from .transcript_import import TEXT_TYPES, load as load_transcript
 from .paths import Paths
 from .pipeline import Engines, process
 from .recorder import MIC_FILE, SYSTEM_FILE, Recorder, RecorderError
@@ -29,7 +32,9 @@ from .transcribe import Transcriber, TranscribeOptions
 
 log = logging.getLogger(__name__)
 
-IMPORT_TYPES = (".wav", ".mp3", ".m4a", ".mp4", ".webm", ".ogg", ".flac", ".aac", ".mkv")
+AUDIO_TYPES = (".wav", ".mp3", ".m4a", ".mp4", ".webm", ".ogg", ".flac", ".aac", ".mkv")
+#: Audio/video is transcribed; a transcript file (Read.ai, Meet, Zoom, VTT) skips straight to the notulen.
+IMPORT_TYPES = AUDIO_TYPES + TEXT_TYPES
 
 
 @dataclass
@@ -58,6 +63,7 @@ class LariksaService:
         self._cancel = threading.Event()
         self._download_lock = threading.Lock()
         self._cuda = register_cuda_libraries(catalog.CUDA_RUNTIME.path(paths))
+        self.media = MediaServer(paths.meeting_dir)
         self._recover()
         threading.Thread(target=self._worker, name="lariksa-worker", daemon=True).start()
 
@@ -180,12 +186,21 @@ class LariksaService:
         if not path.is_file() or path.suffix.lower() not in IMPORT_TYPES:
             return {"ok": False, "error": "Format file tidak didukung."}
         settings = self.store.settings()
+        transcript = []
+        if path.suffix.lower() in TEXT_TYPES:
+            transcript = load_transcript(path)
+            if not transcript:
+                return {"ok": False, "error": "Transkrip kosong atau formatnya tidak dikenali."}
         meeting = self.store.create(title=title.strip() or path.stem, source="import",
                                     language=settings["language"], status=QUEUED)
-        folder = self.paths.meeting_dir(meeting.id)
-        folder.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, folder / f"import{path.suffix.lower()}")
-        self._jobs.put(Job(meeting.id))
+        if transcript:
+            self.store.update(meeting.id, transcript=transcript,
+                              duration=round(max(u.end for u in transcript), 1))
+        else:
+            folder = self.paths.meeting_dir(meeting.id)
+            folder.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, folder / f"import{path.suffix.lower()}")
+        self._jobs.put(Job(meeting.id, retry_summary=bool(transcript)))
         return {"ok": True, "meeting_id": meeting.id}
 
     # -- meetings --------------------------------------------------------
@@ -198,11 +213,22 @@ class LariksaService:
         if m is None:
             return None
         data = m.to_dict()
+        # The numbered line view the notulen references point into.
+        data["lines"] = [{"n": l.n, "start": l.start, "speaker": l.speaker, "text": l.text}
+                         for l in lines_from(m.transcript)]
+        data["has_audio"] = self._audio_tracks(meeting_id) != []
+        data["audio_url"] = self.media.url(meeting_id) if data["has_audio"] else ""
         if m.notulen:
             data["labels"] = labels(m.notulen.language)
-            data["markdown"] = to_markdown(m.notulen, date=_human_date(m.created_at))
-            data["whatsapp"] = to_whatsapp(m.notulen, date=_human_date(m.created_at))
+            data["markdown"] = to_markdown(m.notulen, date=_human_date(m.created_at), title=m.title)
+            data["whatsapp"] = to_whatsapp(m.notulen, date=_human_date(m.created_at), title=m.title)
         return data
+
+    def _audio_tracks(self, meeting_id: str) -> list[Path]:
+        folder = self.paths.meeting_dir(meeting_id)
+        if not folder.is_dir():
+            return []
+        return sorted(p for p in folder.iterdir() if p.suffix.lower() in AUDIO_TYPES and p.stat().st_size > 1024)
 
     def rename(self, meeting_id: str, title: str) -> dict:
         title = title.strip()
@@ -212,10 +238,13 @@ class LariksaService:
         return {"ok": True}
 
     def save_notulen(self, meeting_id: str, data: dict) -> dict:
-        # Edits from the UI don't carry the language; keep the one it was written in.
+        """Apply UI edits. Only text, owners, due dates and done flags change;
+        anchors (refs, start times), speakers and the language always come from storage."""
         current = self.store.get(meeting_id)
-        language = current.notulen.language if current and current.notulen else None
-        self.store.update(meeting_id, notulen=Notulen.from_dict(data, language))
+        if current is None or current.notulen is None:
+            return {"ok": False, "error": "Notulen belum tersedia."}
+        merged = merge_edits(current.notulen, data)
+        self.store.update(meeting_id, notulen=merged)
         return {"ok": True}
 
     def retry(self, meeting_id: str, summary_only: bool = False) -> dict:
@@ -300,6 +329,7 @@ class LariksaService:
             self.stop_recording()
         self._cancel.set()
         stop_all_servers()
+        self.media.stop()
 
 
 def _human_date(iso: str) -> str:
@@ -307,3 +337,51 @@ def _human_date(iso: str) -> str:
         return human_date(datetime.fromisoformat(iso))
     except ValueError:
         return iso
+
+
+def merge_edits(stored: Minutes, data: dict) -> Minutes:
+    """Overlay editable fields from the UI onto the stored minutes.
+
+    Lists are matched by position; the UI may delete items (shorter list) but
+    cannot invent anchors, and extra items it sends become unanchored notes.
+    """
+    def text(value, fallback=""):
+        return " ".join(str(value if value is not None else fallback).split())
+
+    def overlay(items, edits, make, apply):
+        out = []
+        for i, edit in enumerate(edits or []):
+            if not isinstance(edit, dict):
+                continue
+            base = items[i] if i < len(items) else make()
+            if apply(base, edit):
+                out.append(base)
+        return out
+
+    def apply_action(a, e):
+        a.task, a.owner, a.due = text(e.get("task"), a.task), text(e.get("owner"), a.owner), text(e.get("due"), a.due)
+        a.done = bool(e.get("done", a.done))
+        return bool(a.task)
+
+    def apply_point(p, e):
+        p.text = text(e.get("text"), p.text)
+        return bool(p.text)
+
+    def apply_chapter(c, e):
+        c.title, c.summary = text(e.get("title"), c.title), text(e.get("summary"), c.summary)
+        return bool(c.title or c.summary)
+
+    out = Minutes.from_dict(stored.to_dict())
+    out.title = text(data.get("title"), out.title)
+    out.overview = text(data.get("overview"), out.overview)
+    if "highlights" in data:
+        out.highlights = [text(h) for h in data.get("highlights") or [] if text(h)]
+    if "actions" in data:
+        out.actions = overlay(out.actions, data["actions"], lambda: Action(""), apply_action)
+    if "decisions" in data:
+        out.decisions = overlay(out.decisions, data["decisions"], lambda: Point(""), apply_point)
+    if "questions" in data:
+        out.questions = overlay(out.questions, data["questions"], lambda: Point(""), apply_point)
+    if "chapters" in data:
+        out.chapters = overlay(out.chapters, data["chapters"], lambda: Chapter("", ""), apply_chapter)
+    return out
