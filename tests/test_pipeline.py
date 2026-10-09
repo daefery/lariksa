@@ -124,6 +124,48 @@ def test_glossary_and_language_reach_the_transcriber(store, tmp_path):
     assert seen == {"language": "en", "glossary": ("Lariksa",)}
 
 
+class RecordingLLM(FakeLLM):
+    """Remembers the system prompt so a test can see which language was asked for."""
+
+    def __init__(self):
+        super().__init__()
+        self.systems = []
+
+    def complete_json(self, system, user, schema):
+        self.systems.append(system)
+        return super().complete_json(system, user, schema)
+
+
+def _run(store, tmp_path, text, *, setting, meeting_language="id"):
+    folder = tmp_path / "m"
+    two_tracks(folder)
+    m = store.create(language=meeting_language)
+    llm = RecordingLLM()
+    fake = FakeTranscriber({ME: [Utterance(ME, 0, 5, text)]})
+    process(m.id, folder, store, Engines(lambda lang, g: fake, lambda: llm), notulen_language=setting)
+    return store.get(m.id), llm.systems[0]
+
+
+def test_english_speech_gives_english_notulen_even_when_audio_setting_is_indonesian(store, tmp_path):
+    """The reported bug: an English meeting with the default (Indonesian) setting."""
+    english = "Good morning everyone. We will have the meeting today about testing the application."
+    m, system = _run(store, tmp_path, english, setting="auto", meeting_language="id")
+    assert m.notulen.language == "en"
+    assert "Write every JSON value in clear, concise English" in system
+
+
+def test_indonesian_speech_gives_indonesian_notulen(store, tmp_path):
+    m, system = _run(store, tmp_path, "Halo semuanya, kita bahas rilis minggu ini ya.", setting="auto")
+    assert m.notulen.language == "id"
+    assert "Bahasa Indonesia" in system
+
+
+def test_fixed_notulen_language_overrides_detection(store, tmp_path):
+    m, system = _run(store, tmp_path, "Good morning, we will review the plan.", setting="id")
+    assert m.notulen.language == "id"
+    assert "Bahasa Indonesia" in system
+
+
 def test_closing_the_app_mid_job_requeues_instead_of_failing(store, tmp_path):
     folder = tmp_path / "m"
     two_tracks(folder)

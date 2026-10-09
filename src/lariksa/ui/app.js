@@ -166,8 +166,10 @@ function renderNotulen(m) {
     body.replaceChildren(el("p", { class: "lede" }, m.status === "failed" ? "Notulen belum tersedia." : "Notulen akan muncul di sini setelah rapat diproses."));
     return;
   }
+  // Headings come from the server (notulen.LABELS) in the notulen's own language.
+  const t = m.labels;
   const list = (key, items, empty) => items.length
-    ? el("ul", { "data-key": key }, items.map((t) => editable("li", t, () => {})))
+    ? el("ul", { "data-key": key }, items.map((x) => editable("li", x, () => {})))
     : el("p", { class: "muted", "data-key": key }, empty);
 
   const rows = n.action_items.map((a) => el("tr", {},
@@ -175,16 +177,16 @@ function renderNotulen(m) {
     editable("td", a.due || "", () => {}, { class: a.due ? "" : "muted" })));
 
   body.replaceChildren(
-    el("h3", {}, "Ringkasan"), editable("p", n.summary, () => {}, { class: "summary", "data-key": "summary" }),
-    el("h3", {}, "Keputusan"), list("decisions", n.decisions, "Tidak ada keputusan yang tercatat."),
-    el("h3", {}, "Action items"),
+    el("h3", {}, t.summary), editable("p", n.summary, () => {}, { class: "summary", "data-key": "summary" }),
+    el("h3", {}, t.decisions), list("decisions", n.decisions, t.none),
+    el("h3", {}, t.action_items),
     n.action_items.length
       ? el("table", { class: "actions-table", id: "actions" },
-          el("thead", {}, el("tr", {}, el("th", {}, "TUGAS"), el("th", {}, "PIC"), el("th", {}, "DEADLINE"))),
+          el("thead", {}, el("tr", {}, el("th", {}, t.task.toUpperCase()), el("th", {}, t.owner.toUpperCase()), el("th", {}, t.due.toUpperCase()))),
           el("tbody", {}, rows))
-      : el("p", { class: "muted" }, "Tidak ada action item."),
-    el("h3", {}, "Pembahasan"), list("topics", n.topics, "-"),
-    el("h3", {}, "Pertanyaan terbuka"), list("open_questions", n.open_questions, "Tidak ada."),
+      : el("p", { class: "muted" }, t.none),
+    el("h3", {}, t.topics), list("topics", n.topics, "-"),
+    el("h3", {}, t.open_questions), list("open_questions", n.open_questions, t.none),
     el("p", { class: "hint" }, "Klik teks mana pun untuk mengedit. Perubahan tersimpan otomatis."));
 }
 
@@ -326,13 +328,17 @@ function renderSettings() {
   const s = state.status;
   if (!s) return;
   $("s-language").value = s.settings.language;
+  $("s-notulen-language").value = s.settings.notulen_language;
   $("s-whisper").value = s.settings.whisper_model;
   $("s-glossary").value = s.settings.glossary.join(", ");
   renderAssets(s);
 }
 
 async function saveSettings() {
-  await api().save_settings({ language: $("s-language").value, whisper_model: $("s-whisper").value, glossary: $("s-glossary").value });
+  await api().save_settings({
+    language: $("s-language").value, notulen_language: $("s-notulen-language").value,
+    whisper_model: $("s-whisper").value, glossary: $("s-glossary").value,
+  });
   $("s-saved").classList.remove("hidden");
   setTimeout(() => $("s-saved").classList.add("hidden"), 2000);
   await poll();

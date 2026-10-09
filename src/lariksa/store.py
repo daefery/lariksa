@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
 DEFAULT_SETTINGS = {
-    "language": "id",
+    "language": "id",  # what is spoken: id | en | "" (auto-detect); drives transcription
+    "notulen_language": "auto",  # what the notulen is written in: auto | id | en
     "whisper_model": "auto",  # auto | whisper-turbo | whisper-small
     "glossary": [],
     "theme": "light",

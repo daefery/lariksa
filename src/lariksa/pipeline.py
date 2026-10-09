@@ -13,6 +13,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
 
+from .language import AUTO, resolve
 from .notulen import write_notulen
 from .recorder import MIC_FILE, SYSTEM_FILE
 from .store import DONE, FAILED, QUEUED, SUMMARIZING, TRANSCRIBING, Store
@@ -60,7 +61,9 @@ def process(
     progress: Progress = lambda stage, value: None,
     cancelled: Callable[[], bool] = lambda: False,
     skip_transcription: bool = False,
+    notulen_language: str = AUTO,
 ) -> None:
+    """``notulen_language`` is "id", "en", or "auto" to follow what was spoken."""
     meeting = store.get(meeting_id)
     if meeting is None:
         return
@@ -82,9 +85,11 @@ def process(
         store.update(meeting_id, status=SUMMARIZING)
         progress("summarizing", 0.0)
         started = time.monotonic()
+        spoken = " ".join(u.text for u in utterances)
+        language = resolve(notulen_language, spoken, fallback=meeting.language or "id")
         with engines.llm() as llm:
             notulen = write_notulen(
-                as_text(utterances), llm.complete_json, language=meeting.language,
+                as_text(utterances), llm.complete_json, language=language,
                 on_progress=lambda v: progress("summarizing", v),
             )
         timings["summarize_s"] = round(time.monotonic() - started, 1)

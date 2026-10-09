@@ -95,12 +95,21 @@
       <div class="eyebrow">PENGATURAN</div>
       <h1>Pengaturan</h1>
       <div class="card form">
-        <label>Bahasa rapat
+        <label>Bahasa yang diucapkan di rapat
           <select id="s-language">
             <option value="id">Bahasa Indonesia (campur Inggris)</option>
             <option value="en">English</option>
             <option value="">Deteksi otomatis</option>
           </select>
+          <small>Membantu transkripsi. Kalimat bahasa Inggris tetap ditulis dalam bahasa Inggris.</small>
+        </label>
+        <label>Bahasa notulen
+          <select id="s-notulen-language">
+            <option value="auto">Ikuti bahasa rapat</option>
+            <option value="id">Selalu Bahasa Indonesia</option>
+            <option value="en">Always English</option>
+          </select>
+          <small>"Ikuti bahasa rapat": rapat berbahasa Inggris menghasilkan notulen berbahasa Inggris.</small>
         </label>
         <label>Model transkripsi
           <select id="s-whisper">

@@ -143,3 +143,21 @@ def test_rename_and_settings(svc, tmp_path):
     assert svc.rename(mid, "Sprint 12")["ok"]
     assert svc.store.get(mid).title == "Sprint 12"
     assert svc.save_settings({"glossary": "Sari, Budi"})["glossary"] == ["Sari", "Budi"]
+    assert svc.store.settings()["notulen_language"] == "auto"
+
+
+def test_editing_an_english_notulen_keeps_it_english(svc, tmp_path):
+    src = tmp_path / "a.wav"
+    src.write_bytes(b"x" * 4096)
+    mid = svc.import_audio(str(src))["meeting_id"]
+    wait_status(svc, mid, {DONE})
+    m = svc.store.get(mid)
+    m.notulen.language = "en"
+    svc.store.update(mid, notulen=m.notulen)
+    # The UI sends edited fields only, without the language.
+    svc.save_notulen(mid, {"title": "T", "summary": "Edited", "topics": [], "decisions": [],
+                           "action_items": [], "open_questions": []})
+    detail = svc.meeting(mid)
+    assert detail["notulen"]["language"] == "en"
+    assert detail["labels"]["summary"] == "Summary"
+    assert "## Summary" in detail["markdown"]

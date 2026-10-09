@@ -27,6 +27,17 @@ def test_docx_contains_notulen_table_and_transcript(tmp_path):
     assert cells == ["Siapkan deck", "Sari", "Senin"]
 
 
+def test_english_docx_has_english_headings(tmp_path):
+    m = meeting()
+    m.notulen.language = "en"
+    target = tmp_path / "en.docx"
+    write_docx(m, target)
+    doc = Document(str(target))
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "Summary" in text and "Transcript" in text and "Ringkasan" not in text
+    assert [c.text for c in doc.tables[0].rows[0].cells] == ["Task", "Owner", "Due"]
+
+
 def test_markdown_includes_transcript_even_without_notulen():
     md = full_markdown(meeting(with_notulen=False), date="9 Okt")
     assert md.startswith("# Rapat")

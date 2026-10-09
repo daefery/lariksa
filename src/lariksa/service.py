@@ -20,7 +20,7 @@ from . import catalog
 from .audio import repair_wav
 from .hardware import detect, register_cuda_libraries
 from .llm import LocalLLM, server_binary, stop_all_servers
-from .notulen import Notulen, to_markdown, to_whatsapp
+from .notulen import Notulen, labels, to_markdown, to_whatsapp
 from .paths import Paths
 from .pipeline import Engines, process
 from .recorder import MIC_FILE, SYSTEM_FILE, Recorder, RecorderError
@@ -199,6 +199,7 @@ class LariksaService:
             return None
         data = m.to_dict()
         if m.notulen:
+            data["labels"] = labels(m.notulen.language)
             data["markdown"] = to_markdown(m.notulen, date=_human_date(m.created_at))
             data["whatsapp"] = to_whatsapp(m.notulen, date=_human_date(m.created_at))
         return data
@@ -211,7 +212,10 @@ class LariksaService:
         return {"ok": True}
 
     def save_notulen(self, meeting_id: str, data: dict) -> dict:
-        self.store.update(meeting_id, notulen=Notulen.from_dict(data))
+        # Edits from the UI don't carry the language; keep the one it was written in.
+        current = self.store.get(meeting_id)
+        language = current.notulen.language if current and current.notulen else None
+        self.store.update(meeting_id, notulen=Notulen.from_dict(data, language))
         return {"ok": True}
 
     def retry(self, meeting_id: str, summary_only: bool = False) -> dict:
@@ -282,7 +286,8 @@ class LariksaService:
             try:
                 process(m.id, self.paths.meeting_dir(m.id), self.store, self._engines(settings),
                         glossary=tuple(settings["glossary"]), progress=progress,
-                        cancelled=self._cancel.is_set, skip_transcription=job.retry_summary)
+                        cancelled=self._cancel.is_set, skip_transcription=job.retry_summary,
+                        notulen_language=settings["notulen_language"])
             except Exception as exc:  # never let one meeting kill the worker for the session
                 log.exception("Worker failed on %s", m.id)
                 self.store.update(m.id, status=FAILED, error=str(exc) or exc.__class__.__name__)

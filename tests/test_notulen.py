@@ -66,6 +66,49 @@ def test_from_dict_tolerates_messy_model_output():
     assert n.action_items == [ActionItem("X", "", "")]
 
 
+def test_english_notulen_renders_english_headings():
+    n = Notulen.from_dict(SAMPLE, "en")
+    md = to_markdown(n)
+    assert "## Summary" in md and "## Decisions" in md and "## Open questions\n- (none)" in md
+    assert "(Owner: Budi, due: Kamis)" in md
+    assert "Ringkasan" not in md and "PIC" not in md
+    wa = to_whatsapp(n)
+    assert "*Decisions*" in wa and "Keputusan" not in wa
+
+
+def test_placeholder_owner_and_due_are_cleared():
+    """Seen from the real model: 'due: empty' (English) and 'deadline: nanti' (Indonesian)."""
+    items = [
+        {"task": "A", "owner": "Dewi", "due": "empty"},
+        {"task": "B", "owner": "Tidak ada", "due": "nanti"},
+        {"task": "C", "owner": "N/A", "due": "(TBD)"},
+        {"task": "D", "owner": "Budi", "due": "Friday"},
+    ]
+    n = Notulen.from_dict({"action_items": items})
+    assert [(i.owner, i.due) for i in n.action_items] == [("Dewi", ""), ("", ""), ("", ""), ("Budi", "Friday")]
+    assert "due" not in to_whatsapp(Notulen.from_dict({"action_items": items[:1]}, "en"))
+
+
+def test_language_survives_roundtrip_and_defaults_to_indonesian():
+    assert Notulen.from_dict(Notulen.from_dict(SAMPLE, "en").to_dict()).language == "en"
+    assert Notulen.from_dict(SAMPLE).language == "id"  # notulen saved before this field existed
+    assert Notulen.from_dict({**SAMPLE, "language": "fr"}).language == "id"
+
+
+def test_prompt_is_written_in_the_target_language():
+    seen = []
+
+    def complete(system, user, schema):
+        seen.append((system, user))
+        return SAMPLE
+
+    write_notulen("[00:00] Saya: hello", complete, language="en")
+    write_notulen("[00:00] Saya: halo", complete, language="id")
+    (en_sys, en_user), (id_sys, id_user) = seen
+    assert "English" in en_sys and "Meeting transcript" in en_user and "Fill in this JSON" in en_user
+    assert "Bahasa Indonesia" in id_sys and "Transkrip rapat" in id_user
+
+
 def test_markdown_and_whatsapp_render():
     n = Notulen.from_dict(SAMPLE)
     md = to_markdown(n, date="9 Okt 2026")

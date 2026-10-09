@@ -50,13 +50,15 @@
       queue: 0,
       compute: { label: "GPU NVIDIA (RTX 3050 Ti Laptop GPU)", device: "cuda", gpu: "RTX 3050 Ti", cuda_ready: true },
       assets, needed: ["whisper-turbo", "llm", "llama", "cuda"], ready: scenario !== "setup",
-      settings: { language: "id", whisper_model: "auto", glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light" },
+      settings: { language: "id", notulen_language: "auto", whisper_model: "auto", glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light" },
     };
   };
   const detail = (id) => {
     const m = meetings.find((x) => x.id === id);
     const done = m.status === "done";
-    return { ...m, language: "id", error: "", transcript: done ? transcript : [], notulen: done ? notulen : null,
+    const labels = { summary: "Ringkasan", topics: "Pembahasan", decisions: "Keputusan", action_items: "Action items",
+      open_questions: "Pertanyaan terbuka", none: "(tidak ada)", task: "Tugas", owner: "PIC", due: "Deadline" };
+    return { ...m, language: "id", labels, error: "", transcript: done ? transcript : [], notulen: done ? notulen : null,
       timings: done ? { transcribe_s: 84, summarize_s: 71 } : {}, whatsapp: "", markdown: "" };
   };
   const api = {
