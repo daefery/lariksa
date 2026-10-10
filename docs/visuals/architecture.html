@@ -20,7 +20,7 @@ svg.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 </style></head>
 <body>
 <div class="eyebrow">Architecture</div>
-<h2>A small Python core with native engines, wrapped in a WebView window.</h2>
+<h2>A small Rust core with native engines, wrapped in a WebView window.</h2>
 <div class="board">
   <svg class="wires" viewBox="0 0 1456 620">
     <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#467A57"/></marker></defs>
@@ -41,17 +41,17 @@ svg.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
   <div class="box dark" style="left:22px;top:46px;width:220px"><h4>Microphone</h4><p>Your voice → "Saya"</p><div class="f">mic.wav</div></div>
   <div class="box dark" style="left:22px;top:156px;width:220px"><h4>System loopback</h4><p>Meet / Zoom / Teams → "Peserta"</p><div class="f">system.wav</div></div>
 
-  <div class="box" style="left:320px;top:40px;width:240px;height:210px"><h4>Recorder</h4><p>WASAPI capture, 16 kHz mono, pads silence so both tracks follow the wall clock; repairs files after a crash.</p><div class="f">recorder.py · audio.py</div></div>
-  <div class="box" style="left:630px;top:40px;width:240px;height:210px"><h4>Transcribe</h4><p>faster-whisper turbo on CUDA or CPU, language + glossary hints, VAD. Tracks merged, echo dropped.</p><div class="f">transcribe.py · transcript.py</div></div>
-  <div class="box" style="left:940px;top:40px;width:240px;height:210px"><h4>Notulen</h4><p>Language detected from the transcript; JSON-schema output; map-reduce for long meetings.</p><div class="f">language.py · notulen.py</div></div>
-  <div class="box lime" style="left:1238px;top:40px;width:218px;height:210px"><h4>Exports</h4><p>Inline editing, WhatsApp copy, DOCX, Markdown, full-text search.</p><div class="f">export.py · bridge.py</div></div>
+  <div class="box" style="left:320px;top:40px;width:240px;height:210px"><h4>Recorder</h4><p>WASAPI capture, 16 kHz mono, pads silence so both tracks follow the wall clock; repairs files after a crash.</p><div class="f">recorder.rs · audio.rs</div></div>
+  <div class="box" style="left:630px;top:40px;width:240px;height:210px"><h4>Transcribe</h4><p>whisper.cpp turbo on the discrete GPU (Vulkan) or CPU, language + glossary hints, VAD. Tracks merged, echo dropped.</p><div class="f">transcribe.rs · transcript.rs</div></div>
+  <div class="box" style="left:940px;top:40px;width:240px;height:210px"><h4>Notulen</h4><p>Language detected from the transcript; numbered lines in, line references out; grounded in code.</p><div class="f">language.rs · minutes_writer.rs</div></div>
+  <div class="box lime" style="left:1238px;top:40px;width:218px;height:210px"><h4>Exports</h4><p>Inline editing, WhatsApp copy, DOCX, Markdown, full-text search.</p><div class="f">export.rs · bridge.js</div></div>
 
-  <div class="box" style="left:320px;top:300px;width:240px;height:120px"><h4>Service &amp; worker</h4><p>One job at a time, queue survives restarts.</p><div class="f">service.py · pipeline.py</div></div>
-  <div class="box dark" style="left:630px;top:300px;width:240px;height:120px"><h4>Whisper (CTranslate2)</h4><p>cuBLAS + cuDNN when an NVIDIA GPU is present.</p><div class="f">hardware.py</div></div>
-  <div class="box dark" style="left:940px;top:300px;width:240px;height:120px"><h4>llama-server (Vulkan)</h4><p>Short-lived, per-run API key, picks the discrete GPU.</p><div class="f">llm.py</div></div>
+  <div class="box" style="left:320px;top:300px;width:240px;height:120px"><h4>Service &amp; worker</h4><p>One job at a time, queue survives restarts.</p><div class="f">service.rs · pipeline.rs</div></div>
+  <div class="box dark" style="left:630px;top:300px;width:240px;height:120px"><h4>GPU choice</h4><p>One choice for both engines: the discrete GPU, not the iGPU.</p><div class="f">hardware.rs</div></div>
+  <div class="box dark" style="left:940px;top:300px;width:240px;height:120px"><h4>llama-server (Vulkan)</h4><p>Short-lived, per-run API key, picks the discrete GPU.</p><div class="f">llm.rs</div></div>
 
   <div class="box" style="left:320px;top:470px;width:280px;height:120px"><h4>SQLite + FTS5</h4><p>Meetings, transcript, notulen, settings, glossary.</p><div class="f">data/lariksa.db</div></div>
-  <div class="box" style="left:640px;top:470px;width:300px;height:120px"><h4>Pinned downloads</h4><p>Models &amp; runtimes, SHA-256 verified, resumable.</p><div class="f">catalog.py → models/ runtime/</div></div>
-  <div class="box" style="left:980px;top:470px;width:476px;height:120px"><h4>UI: pywebview + WebView2</h4><p>HTML/CSS/JS with the Lariksa Brand Kit tokens, Plus Jakarta Sans and DM Mono. Packaged by PyInstaller as a portable folder.</p><div class="f">ui/ · packaging/</div></div>
+  <div class="box" style="left:640px;top:470px;width:300px;height:120px"><h4>Pinned downloads</h4><p>Models &amp; runtimes, SHA-256 verified, resumable.</p><div class="f">catalog.rs → models/ runtime/</div></div>
+  <div class="box" style="left:980px;top:470px;width:476px;height:120px"><h4>UI: Tauri + WebView2</h4><p>HTML/CSS/JS with the Lariksa Brand Kit tokens, Plus Jakarta Sans and DM Mono. One 8 MB Rust executable.</p><div class="f">ui/ · packaging/</div></div>
 </div>
 </body></html>

@@ -1,4 +1,4 @@
-// Browser-only stand-in for window.pywebview.api, for UI previews and README
+// Browser-only stand-in for the app's API (window.pywebview.api, see desktop/src/bridge.js), for UI previews and README
 // screenshots without Windows. Loaded by scripts/preview.py, never shipped.
 // Data comes from scripts/sample_meeting.json (fictional), injected as
 // window.SAMPLE by preview.py.
@@ -30,12 +30,14 @@
     title: notulen.title, preview: notulen.overview, ...m, created_at: iso(m.minutes_ago),
   }));
 
+  // Mirrors core/src/catalog.rs.
   const assets = {
-    "whisper-turbo": { label: "Model transkripsi (Whisper large-v3-turbo)", size: 1622e6, installed: scenario !== "setup" },
-    "whisper-small": { label: "Model transkripsi ringan (Whisper small)", size: 486e6, installed: false },
+    "whisper-turbo": { label: "Model transkripsi (Whisper large-v3-turbo)", size: 574e6, installed: scenario !== "setup" },
+    "whisper-small": { label: "Model transkripsi ringan (Whisper small)", size: 264e6, installed: false },
+    vad: { label: "Deteksi suara (Silero VAD)", size: 885e3, installed: scenario !== "setup" },
     llm: { label: "Model notulen (Qwen3 4B Instruct)", size: 2497e6, installed: scenario !== "setup" },
     llama: { label: "Mesin AI lokal (llama.cpp)", size: 33e6, installed: scenario !== "setup" },
-    cuda: { label: "Akselerasi GPU NVIDIA (cuBLAS + cuDNN)", size: 1260e6, installed: scenario !== "setup" },
+    whisper: { label: "Mesin transkripsi (whisper.cpp)", size: 9e6, installed: scenario !== "setup" },
   };
   const t0 = Date.now();
   const status = () => {
@@ -47,10 +49,10 @@
       silent: [],
       devices: live ? { mic: "Microphone Array (Realtek)", system: "Headphones (WH-1000XM4)" } : {},
       activity: { meeting_id: scenario === "processing" ? "m3" : "", stage: "summarizing", progress: 0.42,
-        downloads: scenario === "setup" ? { "whisper-turbo": { label: "", done: 0.37 * 1622e6, total: 1622e6, error: "" } } : {} },
+        downloads: scenario === "setup" ? { "whisper-turbo": { label: "", done: 0.37 * 574e6, total: 574e6, error: "" } } : {} },
       queue: 0,
-      compute: { label: "GPU (RTX 3050 Ti Laptop GPU)", device: "cuda", gpu: "RTX 3050 Ti", cuda_ready: true },
-      assets, needed: ["whisper-turbo", "llm", "llama", "cuda"], ready: scenario !== "setup",
+      compute: { label: "GPU (NVIDIA GeForce RTX 3050 Ti Laptop GPU)", device: "gpu", gpu: "NVIDIA GeForce RTX 3050 Ti Laptop GPU" },
+      assets, needed: ["whisper-turbo", "vad", "llm", "llama", "whisper"], ready: scenario !== "setup",
       settings: { language: "id", notulen_language: "auto", whisper_model: "auto",
         glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light" },
     };
@@ -75,6 +77,7 @@
       download: ok, export: ok, copy_text: ok,
       save_settings: async (v) => v,
       import_audio: async () => ({ ok: false, error: "" }),
+      hotkey_label: async () => "Ctrl+Shift+R", hotkey_error: async () => "", show_main: ok, hide_pill: ok,
     },
   };
   window.addEventListener("load", () => {

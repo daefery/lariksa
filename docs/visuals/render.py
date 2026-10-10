@@ -1,6 +1,6 @@
 """Render the README visuals into docs/assets/.
 
-    uv run python docs/visuals/render.py
+    python3 docs/visuals/render.py          (pip install pyoxipng to compress)
 
 Step 1 renders the real app UI with fictional data (scripts/preview.py
 --readme). Step 2 renders the composed brand pages in this folder, which embed
@@ -49,7 +49,7 @@ def _optimise(folder: Path) -> None:
     try:
         import oxipng
     except ImportError:
-        print("oxipng not installed; skipping compression (uv run --with pyoxipng ...)")
+        print("oxipng not installed; skipping compression (pip install pyoxipng)")
         return
     for png in sorted(folder.glob("*.png")):
         before = png.stat().st_size

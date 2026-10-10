@@ -12,6 +12,6 @@ Please don't:
 - publish a fork, build or product under the Lariksa name or with its logo or icon;
 - imply that a modified version is the official Lariksa.
 
-If you ship a fork, give it its own name and replace `src/lariksa/ui/lariksa.ico`, the inline mark in `src/lariksa/ui/index.html`, `brand/` and `Lariksa_Brand_Kit_v1.0/`.
+If you ship a fork, give it its own name and replace `ui/lariksa.ico`, `desktop/icons/`, the inline mark in `ui/index.html`, `brand/` and `Lariksa_Brand_Kit_v1.0/`.
 
 The brand kit in `Lariksa_Brand_Kit_v1.0/` is included as the design reference for this app. The name and mark have not yet been cleared as registered trademarks.

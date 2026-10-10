@@ -12,3 +12,4 @@ dist/
 # Brand kit source documents stay local; the repo carries the extracted assets.
 *.pdf
 *.zip
+target/

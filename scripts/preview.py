@@ -3,7 +3,7 @@
     uv run python scripts/preview.py out_dir            # all scenes, 1180x780
     uv run python scripts/preview.py docs/assets --readme   # README screenshots, 2x
 
-The page is the app's own src/lariksa/ui (HTML, CSS, JS, fonts), so what you
+The page is the app's own ui/ (HTML, CSS, JS, fonts), so what you
 see is what ships; only window.pywebview.api is replaced by
 scripts/preview_stub.js reading scripts/sample_meeting.json.
 """
@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-UI = ROOT / "src" / "lariksa" / "ui"
+UI = ROOT / "ui"
 SCRIPTS = ROOT / "scripts"
 
 #: name -> (query, window height)

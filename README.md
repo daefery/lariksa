@@ -15,7 +15,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-23362C"></a>
   <img alt="Platform: Windows 10/11" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-23362C">
-  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-23362C">
+  <img alt="Rust + Tauri" src="https://img.shields.io/badge/Rust-Tauri-23362C">
   <img alt="Offline AI" src="https://img.shields.io/badge/AI-100%25%20local-C9F27A?labelColor=23362C">
 </p>
 
@@ -26,7 +26,7 @@
 ![Four steps: record two tracks during the call; after you stop, transcribe with Whisper, write the notulen with a local LLM, then review and share via WhatsApp, Word, Markdown or search.](docs/assets/flow.png)
 
 1. **Record.** Press **Rekam**, or **Ctrl+Shift+R** from inside Zoom, Meet or Teams. Your microphone ("Saya") and the meeting audio from your speakers ("Peserta") are saved as two separate tracks. No AI runs during the call, so it stays smooth. A small always-on-top indicator shows the timer, live levels and a **Selesai** button, and never takes focus from the meeting; press the shortcut again or click **Selesai** to stop. While the notulen is being written, the same indicator (and the taskbar icon) shows the stage and progress.
-2. **Transcribe.** Press **Selesai**. Whisper large-v3-turbo turns both tracks into text, merges them by time and drops the mic's echo of the speakers. The track tells it who spoke, so no speaker-detection model is needed.
+2. **Transcribe.** Press **Selesai**. Whisper large-v3-turbo (whisper.cpp) turns both tracks into text, merges them by time and drops the mic's echo of the speakers. The track tells it who spoke, so no speaker-detection model is needed.
 3. **Write the notulen.** A local LLM (Qwen3-4B via llama.cpp) reads the transcript as numbered lines and answers with line numbers, so every chapter, action item, decision and open question points back to the exact moment it came from. Code, not the model, turns those references into timestamps, matches owners to real speakers, keeps a deadline only if it was actually said, and drops anything that cites a line that does not exist. Whisper is unloaded first, so an 8 GB laptop copes.
 4. **Review and share.** Action items are grouped by owner with checkboxes; every item has a timestamp that jumps to that moment in the transcript and plays the audio from there. Chapters sit in a side rail, with talk time per speaker. Edit anything inline, then copy it to WhatsApp or export to Word or Markdown. Every meeting is searchable.
 
@@ -70,27 +70,27 @@ Measured on an RTX 3050 Ti laptop (4 GB VRAM), i7-12650H, 10 minutes of real Ind
 
 | Step | NVIDIA GPU | CPU only |
 |---|---|---|
-| Transcription (Whisper large-v3-turbo) | **21 s** | 198 s |
+| Transcription (Whisper large-v3-turbo, whisper.cpp) | **36 s** | 630 s |
 | Notulen (Qwen3-4B Q4_K_M) | **48 s** | ~200 s |
 
-A 1-hour meeting needs about 5 minutes after you stop on that GPU (estimated, not yet measured).
+Both run on the GPU through Vulkan, so any recent NVIDIA, AMD or Intel graphics helps; on a laptop with two GPUs Lariksa picks the faster, discrete one. A 31-minute recorded meeting (both tracks) took 86 s to transcribe and 200 s to write the notulen on that laptop.
 
 ## Download
 
 | | File | Size | |
 |---|---|---|---|
-| **Recommended** | [**Lariksa-portable.zip**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa-portable.zip) | 96 MB | Extract anywhere, run `Lariksa\Lariksa.exe`. Opens fastest. |
-| Single file | [**Lariksa.exe**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa.exe) | 96 MB | One file. Put it in its own folder: models and meetings are saved next to it. Opens a few seconds slower. |
+| **Recommended** | [**Lariksa-portable.zip**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa-portable.zip) | 4 MB | Extract anywhere, run `Lariksa\Lariksa.exe`. Includes the licence files. |
+| Single file | [**Lariksa.exe**](https://github.com/daefery/lariksa/releases/latest/download/Lariksa.exe) | 8 MB | The same app as one file. Put it in its own folder: models and meetings are saved next to it. |
 
 Both links always point to the [latest release](https://github.com/daefery/lariksa/releases/latest); checksums are in [`SHA256SUMS.txt`](https://github.com/daefery/lariksa/releases/latest/download/SHA256SUMS.txt). Or [build it yourself](#build-from-source).
 
-**Requirements:** Windows 10 2004+ or Windows 11 (x64), 8 GB RAM (16 GB recommended), about 6 GB of free disk. An NVIDIA GPU is optional and makes transcription about 9x faster.
+**Requirements:** Windows 10 2004+ or Windows 11 (x64) with the WebView2 runtime (built into Windows 11 and current Windows 10), 8 GB RAM (16 GB recommended), about 4 GB of free disk. A graphics card is optional and makes transcription about 17x faster.
 
 ## Get started
 
 1. Download one of the files above. No installer, no admin rights: Documents or an external drive both work.
 2. Run `Lariksa.exe`. If Windows shows "Windows protected your PC", choose **More info → Run anyway** (the app is not code-signed yet).
-3. Click **Unduh semua** (download all) once, about 4 GB. After that Lariksa works offline.
+3. Click **Unduh semua** (download all) once, about 3.1 GB. After that Lariksa works offline.
 4. In **Pengaturan**, add your colleagues' names and team jargon to the glossary.
 5. Tell participants the meeting is recorded, press **Rekam**, and **Selesai** when you're done.
 
@@ -98,49 +98,38 @@ Everything (models, runtime and your meetings in `data/`) lives in the app's fol
 
 ## Architecture
 
-![Architecture: Windows audio feeds the recorder, then transcription (Whisper on CTranslate2) and notulen (llama-server on Vulkan), then exports; a service worker, SQLite with full-text search, pinned downloads and a pywebview UI support them.](docs/assets/architecture.png)
+![Architecture: Windows audio feeds the recorder, then transcription (whisper.cpp) and notulen (llama-server), both on the GPU through Vulkan, then exports; a service worker, SQLite with full-text search, pinned downloads and a Tauri window support them.](docs/assets/architecture.png)
 
-| Module | Responsibility |
+Two Rust crates: `core/` is everything except the window and is tested on any OS; `desktop/` is the Tauri app that wraps it.
+
+| Module (`core/src/`) | Responsibility |
 |---|---|
-| `recorder.py`, `audio.py` | WASAPI two-track capture, 16 kHz mono, wall-clock padding, crash repair |
-| `transcribe.py`, `hardware.py` | faster-whisper with Indonesian defaults; CUDA or CPU choice |
-| `transcript.py` | Utterances, track merge, echo removal |
-| `language.py` | Which language the notulen is written in |
-| `notulen.py`, `llm.py` | Prompts, JSON schema, map-reduce for long meetings; llama-server lifecycle and GPU choice |
-| `pipeline.py` | Transcribe then summarise, with injected engines |
-| `store.py` | SQLite + FTS5 search, settings, glossary |
-| `service.py`, `bridge.py`, `app.py` | Worker queue, downloads, recovery; JavaScript API; window |
-| `catalog.py` | Pinned, SHA-256-verified, resumable downloads |
+| `recorder.rs`, `audio.rs` | WASAPI two-track capture, 16 kHz mono, wall-clock padding, crash repair; decoding imported audio/video |
+| `transcribe.rs`, `hardware.rs` | whisper.cpp with Indonesian defaults; one GPU choice for both engines |
+| `transcript.rs`, `transcript_import.rs` | Utterances, track merge, echo removal; Read.ai / Meet / Zoom / VTT import |
+| `language.rs` | Which language the notulen is written in |
+| `minutes.rs`, `minutes_writer.rs`, `llm.rs` | Line-referenced notulen and the guardrails around a 4B model; llama-server lifecycle |
+| `pipeline.rs` | Transcribe then summarise, with injected engines |
+| `store.rs` | SQLite + FTS5 search, settings, glossary |
+| `service.rs`, `overlay.rs`, `hotkey.rs` | Worker queue, downloads, recovery; recording pill and shortcut logic |
+| `render.rs`, `export.rs`, `media.rs` | WhatsApp, Markdown and DOCX; the audio player's local server |
+| `catalog.rs` | Pinned, SHA-256-verified, resumable downloads |
+| `assets/prompts.json` | Every prompt, JSON schema and on-screen label, in Indonesian and English |
+| `desktop/` | The two windows, the JavaScript API (`bridge.js`), clipboard and file dialogs |
 | `ui/` | HTML/CSS/JS with the Lariksa Brand Kit tokens, Plus Jakarta Sans, DM Mono |
 
 ## Build from source
 
-On Windows, with no system Python needed (uv and Python are fetched into `.tools/`):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File packaging\build.ps1
-```
-
-This runs the tests and produces the app folder `dist\Lariksa\` plus the release files in `dist\release\`: `Lariksa-portable.zip`, the single-file `Lariksa.exe` and `SHA256SUMS.txt`. Models download inside the app on first run.
-
-Develop:
-
-```powershell
-packaging\dev.cmd sync --group dev
-packaging\dev.cmd run pytest -q
-packaging\dev.cmd run python -m lariksa.app
-```
-
-On Linux or WSL everything except the recorder and the window runs, which covers the tests and the pipeline:
+Lariksa builds from Linux or WSL for Windows, with no Visual Studio; see [docs/BUILD.md](docs/BUILD.md) for the one-time toolchain setup.
 
 ```bash
-uv sync
-uv run pytest -q                          # 69 tests; the WASAPI test runs only on Windows
-uv run python scripts/preview.py out/     # UI screenshots in headless Chrome with a stub API
-uv run --with pyoxipng python docs/visuals/render.py   # regenerate the README visuals
+cargo test -p lariksa-core                # 114 tests on any OS, plus a WASAPI test on Windows
+packaging/build.sh                        # tests, then dist/Lariksa/ and dist/release/ (zip, exe, SHA256SUMS.txt)
+python3 scripts/preview.py out/           # UI screenshots in headless Chrome with a stub API
+python3 docs/visuals/render.py            # regenerate the README visuals
 ```
 
-Bench scripts in `scripts/`: `bench_asr.py` (Whisper settings side by side), `bench_notulen.py`, `bench_llm.py`, and `smoke.py` (the full pipeline through the service, no UI).
+Models and runtimes download inside the app on first run.
 
 ## Brand
 
@@ -160,7 +149,6 @@ The Lariksa name, logo and icon are not covered by the code licence; see [TRADEM
 
 Third-party components, none of which are redistributed in this repository except the fonts:
 
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (MIT), [CTranslate2](https://github.com/OpenNMT/CTranslate2) (MIT), [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT), [pywebview](https://github.com/r0x0r/pywebview) (BSD-3-Clause), [PyAudioWPatch](https://github.com/s0d3s/PyAudioWPatch) (Apache-2.0), [python-docx](https://github.com/python-openxml/python-docx) (MIT), [PyAV](https://github.com/PyAV-Org/PyAV) (BSD-3-Clause)
-- Models downloaded at first run: Whisper large-v3-turbo (MIT), Qwen3-4B-Instruct-2507 (Apache-2.0). NVIDIA cuBLAS and cuDNN are downloaded from PyPI under NVIDIA's licence.
-- Whisper setup patterns adapted from [AutoClip](https://github.com/artbyjazi/autoclip) (MIT, Jad Ghazi); notice in [NOTICE](NOTICE).
-- Fonts: Plus Jakarta Sans and DM Mono, SIL Open Font License 1.1 (`src/lariksa/ui/fonts/`).
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT) and [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT), downloaded at first run; [Tauri](https://tauri.app) (MIT/Apache-2.0), [rusqlite](https://github.com/rusqlite/rusqlite) with SQLite (MIT, public domain), [Symphonia](https://github.com/pdeljanov/Symphonia) (MPL-2.0), [wasapi-rs](https://github.com/HEnquist/wasapi-rs) (MIT); the full list of Rust crates and licences is in `Cargo.lock`
+- Models downloaded at first run: Whisper large-v3-turbo in ggml format (MIT), Silero VAD (MIT), Qwen3-4B-Instruct-2507 (Apache-2.0).
+- Fonts: Plus Jakarta Sans and DM Mono, SIL Open Font License 1.1 (`ui/fonts/`).

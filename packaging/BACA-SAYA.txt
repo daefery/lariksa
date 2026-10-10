@@ -5,7 +5,7 @@ MEMULAI
 2. Jalankan Lariksa.exe
    Jika muncul "Windows protected your PC": klik "More info" lalu "Run anyway".
    (Aplikasi belum ditandatangani secara digital.)
-3. Klik "Unduh semua" sekali (sekitar 4 GB). Setelah itu Lariksa bekerja offline.
+3. Klik "Unduh semua" sekali (sekitar 3,1 GB). Setelah itu Lariksa bekerja offline.
 4. Saat rapat dimulai, tekan Rekam. Saat selesai, tekan Selesai.
    Notulen siap dalam 1-3 menit (GPU) atau beberapa menit lebih lama di laptop tanpa GPU.
 

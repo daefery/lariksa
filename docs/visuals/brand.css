@@ -1,6 +1,6 @@
 /* Shared styles for README visuals. Tokens from Lariksa_Brand_Kit_v1.0/04_Design_Tokens. */
-@font-face{font-family:"Plus Jakarta Sans";src:url(../../src/lariksa/ui/fonts/PlusJakartaSans.woff2) format("woff2");font-weight:200 800}
-@font-face{font-family:"DM Mono";src:url(../../src/lariksa/ui/fonts/DMMono-400.woff2) format("woff2");font-weight:400}
+@font-face{font-family:"Plus Jakarta Sans";src:url(../../ui/fonts/PlusJakartaSans.woff2) format("woff2");font-weight:200 800}
+@font-face{font-family:"DM Mono";src:url(../../ui/fonts/DMMono-400.woff2) format("woff2");font-weight:400}
 :root{--forest:#23362C;--ink:#17241E;--lime:#C9F27A;--paper:#F7F8F4;--sage:#E9EDE5;--active:#DDE9CF;--muted:#65736B;--line:#DDE4DA;--focus:#467A57;--warn:#B7792B;--ok:#278264}
 *{box-sizing:border-box;margin:0}
 html,body{width:100%;height:100%}

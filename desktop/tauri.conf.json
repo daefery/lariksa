@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lariksa",
+  "version": "0.2.0",
+  "identifier": "app.lariksa.desktop",
+  "build": { "frontendDist": "../ui" },
+  "app": {
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "copyright": "Copyright 2026 Fery Yundara Putera",
+    "publisher": "Fery Yundara Putera",
+    "shortDescription": "Notulen rapat yang tetap di laptopmu"
+  }
+}
