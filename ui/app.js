@@ -21,6 +21,17 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+/** An icon from the sprite in index.html. */
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "icon");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#i-${name}`);
+  svg.append(use);
+  return svg;
+}
+
 function toast(text) {
   const t = $("toast");
   t.textContent = text;
@@ -228,7 +239,7 @@ function renderNotulen(m) {
       el("div", { class: "side" }, a.due ? el("span", { class: "due" }, a.due) : null, tsChip(a.start, a.refs))))));
 
   const pointList = (items, kind) => el("ul", { class: `points ${kind}` }, items.map((p, i) => el("li", { "data-i": i },
-    el("span", { class: "mark" }, kind === "q" ? "?" : "✓"),
+    el("span", { class: "mark" }, icon(kind === "q" ? "question" : "check")),
     editable("span", p.text, { "data-field": "text" }), tsChip(p.start, p.refs))));
 
   body.replaceChildren(...[
@@ -304,8 +315,8 @@ function renderSide(m) {
 function wirePlayer() {
   const audio = $("audio");
   $("play").addEventListener("click", () => (audio.paused ? audio.play() : audio.pause()));
-  audio.addEventListener("play", () => ($("play").textContent = "❚❚"));
-  audio.addEventListener("pause", () => ($("play").textContent = "▶"));
+  audio.addEventListener("play", () => $("play-icon").setAttribute("href", "#i-pause"));
+  audio.addEventListener("pause", () => $("play-icon").setAttribute("href", "#i-play"));
   audio.addEventListener("timeupdate", () => {
     const total = audio.duration || state.meeting?.duration || 0;
     $("t-now").textContent = clock(audio.currentTime);

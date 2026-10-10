@@ -7,6 +7,22 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- One icon set: 24px grid, 2px round strokes, currentColor (same family as the README visuals). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5"/><path d="M6 9v10a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1V9"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95"/><path d="M19 4v4h-4"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-question" viewBox="0 0 24 24"><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17.5h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  </defs>
+</svg>
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
@@ -14,12 +30,12 @@
       <span>lariksa.</span>
     </div>
     <nav>
-      <button class="nav active" data-view="home">⌂&nbsp;&nbsp;<span data-i18n="nav.home">Beranda</span></button>
-      <button class="nav" data-view="settings">⚙&nbsp;&nbsp;<span data-i18n="nav.settings">Pengaturan</span></button>
+      <button class="nav active" data-view="home"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span data-i18n="nav.home">Beranda</span></button>
+      <button class="nav" data-view="settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span data-i18n="nav.settings">Pengaturan</span></button>
     </nav>
     <div class="section" data-i18n="nav.meetings">RAPAT</div>
     <label class="search">
-      <span aria-hidden="true">⌕</span>
+      <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
       <input id="search" type="search" placeholder="Cari catatanmu" data-i18n-placeholder="search.placeholder" autocomplete="off">
     </label>
     <ul id="meeting-list" class="meeting-list" aria-label="Daftar rapat" data-i18n-aria="search.aria"></ul>
@@ -31,7 +47,7 @@
     <section id="view-home" class="view">
       <div class="toolbar">
         <div class="eyebrow" id="greeting-eyebrow">LARIKSA</div>
-        <button class="ghost" id="theme" aria-label="Ganti tema" data-i18n-aria="theme.aria">◐ <span data-i18n="theme">Tema</span></button>
+        <button class="ghost with-icon" id="theme" aria-label="Ganti tema" data-i18n-aria="theme.aria"><svg class="icon" aria-hidden="true"><use href="#i-theme"/></svg><span data-i18n="theme">Tema</span></button>
       </div>
       <h1 id="greeting">Selamat datang.</h1>
       <p class="lede" data-i18n="home.lede">Notulen rapi pas rapat selesai. Tanpa bot, tanpa langganan, semuanya di laptopmu.</p>
@@ -62,7 +78,7 @@
 
       <div class="row-between">
         <div class="eyebrow" data-i18n="recent">RAPAT TERBARU</div>
-        <button class="link" id="import" data-i18n="import">+ Impor rekaman atau transkrip</button>
+        <button class="link with-icon" id="import"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="import">Impor rekaman atau transkrip</span></button>
       </div>
       <div class="cards" id="cards"></div>
     </section>
@@ -70,12 +86,12 @@
     <!-- MEETING -->
     <section id="view-meeting" class="view view-wide hidden">
       <div class="toolbar">
-        <button class="link" id="back" data-i18n="back">← Kembali</button>
+        <button class="link with-icon" id="back"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg><span data-i18n="back">Kembali</span></button>
         <div class="actions">
           <button class="ghost" id="copy-wa" data-i18n="copy.wa">Salin untuk WhatsApp</button>
           <button class="ghost" id="export-docx">DOCX</button>
           <button class="ghost" id="export-md">Markdown</button>
-          <button class="ghost" id="regen" title="Tulis ulang notulen dari transkrip" data-i18n="regen" data-i18n-title="regen.title">↻ Notulen</button>
+          <button class="ghost with-icon" id="regen" title="Tulis ulang notulen dari transkrip" data-i18n-title="regen.title"><svg class="icon" aria-hidden="true"><use href="#i-redo"/></svg><span data-i18n="regen">Notulen</span></button>
           <button class="ghost danger" id="delete" data-i18n="delete">Hapus</button>
         </div>
       </div>
@@ -89,7 +105,7 @@
           <button class="tab active" data-tab="notulen" role="tab" data-i18n="tab.notulen">Notulen</button>
           <button class="tab" data-tab="transcript" role="tab" data-i18n="tab.transcript">Transkrip</button>
         </div>
-        <label class="find"><span aria-hidden="true">⌕</span><input id="m-find" type="search" placeholder="Cari di rapat ini" data-i18n-placeholder="find.placeholder" autocomplete="off"></label>
+        <label class="find"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="m-find" type="search" placeholder="Cari di rapat ini" data-i18n-placeholder="find.placeholder" autocomplete="off"></label>
       </div>
 
       <div class="meeting-grid">
@@ -99,7 +115,7 @@
         </div>
         <aside class="meeting-side" id="m-side">
           <div class="player hidden" id="player">
-            <button class="play" id="play" aria-label="Putar" data-i18n-aria="play.aria">▶</button>
+            <button class="play" id="play" aria-label="Putar" data-i18n-aria="play.aria"><svg class="icon" aria-hidden="true"><use id="play-icon" href="#i-play"/></svg></button>
             <div class="track">
               <div class="scrub" id="scrub"><b id="scrub-fill"></b><div id="scrub-marks"></div></div>
               <div class="times"><span id="t-now">00:00</span><span id="t-total">00:00</span></div>

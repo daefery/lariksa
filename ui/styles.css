@@ -14,15 +14,20 @@ button{cursor:pointer;border:0;border-radius:var(--radius-md);padding:11px 17px;
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.5;cursor:default}
 :focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
-[data-theme="dark"] button:not(.ghost):not(.link):not(.nav):not(.tab):not(.record-btn){background:var(--brand-accent);color:#17241E}
+[data-theme="dark"] button:not(.ghost):not(.link):not(.nav):not(.tab):not(.record-btn):not(.ts):not(.play){background:var(--brand-accent);color:#17241E}
 .hidden{display:none!important}
 code{font-family:var(--font-mono);font-size:12px;background:var(--surface-muted);padding:2px 6px;border-radius:var(--radius-sm)}
 
 .app{display:flex;height:100vh}
 .sidebar{width:256px;flex:none;background:var(--surface-muted);padding:26px 16px 16px;border-right:1px solid var(--border-default);display:flex;flex-direction:column;min-height:0}
 .brand{display:flex;align-items:center;gap:10px;font-size:25px;font-weight:700;letter-spacing:-1.2px;margin:0 6px 26px}
-.mark{width:32px;height:32px}
-.nav{display:block;width:100%;text-align:left;background:transparent;color:var(--text-secondary);font-weight:500;padding:11px 12px;margin:2px 0}
+.brand .mark{width:32px;height:32px}
+/* Icons: one line set from the sprite in index.html, sized to the text they sit next to. */
+.icon{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.with-icon{display:inline-flex;align-items:center;gap:7px}
+.with-icon .icon{width:16px;height:16px}
+.search .icon,.find .icon{width:16px;height:16px}
+.nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;color:var(--text-secondary);font-weight:500;padding:11px 12px;margin:2px 0}
 .nav:hover{background:var(--surface-active)}
 .nav.active{background:var(--surface-active);color:var(--text-primary);font-weight:700}
 .section{font-size:10px;letter-spacing:.13em;margin:24px 6px 10px;color:var(--text-secondary);font-weight:700}
@@ -121,7 +126,9 @@ h1{font-size:40px;letter-spacing:-1.6px;margin:16px 0 6px;line-height:1.1}
 .turn.me .who{color:var(--focus-ring)}
 .turn p{margin:0;line-height:1.65}
 
-.form{display:grid;gap:18px;max-width:560px}
+.form{display:grid;gap:18px}
+/* Both settings cards share one width, so their edges line up. */
+#view-settings .card{max-width:640px}
 .form label{display:grid;gap:7px;font-weight:600;font-size:13px}
 .form small{font-weight:400;color:var(--text-secondary)}
 .form select,.form textarea,.form input{border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 12px;background:var(--surface-page);min-height:44px}
@@ -178,7 +185,8 @@ h1{font-size:40px;letter-spacing:-1.6px;margin:16px 0 6px;line-height:1.1}
 
 .points{list-style:none;padding:0;margin:0;display:grid;gap:8px}
 .points li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 12px;line-height:1.55}
-.points .mark{font-weight:800;color:var(--focus-ring);text-align:center}
+.points .mark{color:var(--focus-ring);display:flex;justify-content:center;padding-top:2px}
+.points .mark .icon{width:16px;height:16px;stroke-width:2.4}
 .points.q .mark{color:var(--warning)}
 
 .chapter{display:grid;grid-template-columns:70px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid var(--border-default)}
@@ -187,7 +195,8 @@ h1{font-size:40px;letter-spacing:-1.6px;margin:16px 0 6px;line-height:1.1}
 .chapter p{margin:0;line-height:1.7;color:var(--text-primary)}
 
 .player{background:var(--brand-primary);color:#F2F5EF;border-radius:var(--radius-lg);padding:14px;display:flex;gap:12px;align-items:center}
-.player .play{width:40px;height:40px;border-radius:50%;padding:0;background:var(--brand-accent)!important;color:#17241E!important;font-size:14px;flex:none}
+.player .play{width:40px;height:40px;border-radius:50%;padding:0;background:var(--brand-accent)!important;color:#17241E!important;flex:none;display:flex;align-items:center;justify-content:center}
+.player .play .icon{width:18px;height:18px}
 .player .track{flex:1;min-width:0}
 .scrub{position:relative;height:8px;border-radius:4px;background:rgba(242,245,239,.18);cursor:pointer;overflow:visible}
 .scrub b{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;background:var(--brand-accent)}
@@ -197,7 +206,7 @@ h1{font-size:40px;letter-spacing:-1.6px;margin:16px 0 6px;line-height:1.1}
 .side-card:empty{display:none}
 .side-card h5{font-size:11px;letter-spacing:.12em;color:var(--text-secondary);text-transform:uppercase;margin:0 0 10px}
 .toc{list-style:none;padding:0;margin:0;display:grid;gap:2px}
-.toc button{display:grid;grid-template-columns:52px 1fr;gap:8px;width:100%;text-align:left;background:none;color:var(--text-primary);font-weight:500;padding:6px 6px;border-radius:8px;font-size:13px;line-height:1.35}
+.toc button,[data-theme="dark"] .toc button{display:grid;grid-template-columns:52px 1fr;gap:8px;width:100%;text-align:left;background:none;color:var(--text-primary);font-weight:500;padding:6px 6px;border-radius:8px;font-size:13px;line-height:1.35}
 .toc button:hover,.toc button.now{background:var(--surface-active)}
 .toc time{font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary);padding-top:1px}
 .spk{display:grid;gap:9px}
