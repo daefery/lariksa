@@ -16,6 +16,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::audio::{missing_frames, peak, Downsampler, WavWriter, TARGET_RATE};
+use crate::i18n::tr;
 pub use crate::pipeline::{MIC_FILE, SYSTEM_FILE};
 
 /// Gaps longer than this (seconds) in a track are filled with silence.
@@ -131,7 +132,7 @@ impl AudioRecorder for Recorder {
     fn start(&self, folder: &Path) -> Result<HashMap<String, String>, RecorderError> {
         let mut inner = self.inner.lock().unwrap();
         if inner.is_some() {
-            return Err(RecorderError("Rekaman sudah berjalan.".into()));
+            return Err(RecorderError(tr("Rekaman sudah berjalan.", "A recording is already running.").into()));
         }
         std::fs::create_dir_all(folder).map_err(|e| RecorderError(e.to_string()))?;
         self.running.store(true, Ordering::SeqCst);
@@ -200,7 +201,7 @@ mod wasapi_impl {
     use super::*;
     pub type Started = (HashMap<String, String>, Vec<(String, Arc<TrackState>)>, Vec<std::thread::JoinHandle<()>>);
     pub fn start(_: &Path, _: Arc<AtomicBool>) -> Result<Started, RecorderError> {
-        Err(RecorderError("Perekam audio hanya tersedia di Windows.".into()))
+        Err(RecorderError(tr("Perekam audio hanya tersedia di Windows.", "Recording is only available on Windows.").into()))
     }
 }
 
@@ -230,7 +231,7 @@ mod wasapi_impl {
             let handle = std::thread::Builder::new()
                 .name(format!("rec-{name}"))
                 .spawn(move || capture(direction, &path, run_flag, st, started, tx))
-                .map_err(|e| err("Gagal mulai merekam", e))?;
+                .map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
             let failure = match rx.recv() {
                 Ok(Ok(device)) => {
                     devices.insert(name.to_string(), device);
@@ -239,7 +240,7 @@ mod wasapi_impl {
                     continue;
                 }
                 Ok(Err(e)) => e,
-                Err(_) => RecorderError("Gagal mulai merekam.".into()),
+                Err(_) => RecorderError(tr("Gagal mulai merekam.", "Could not start recording.").into()),
             };
             // Undo the track that did start, so nothing is left half-open.
             running.store(false, Ordering::SeqCst);
@@ -265,23 +266,23 @@ mod wasapi_impl {
     ) {
         let _ = wasapi::initialize_mta();
         let setup = || -> Result<_, RecorderError> {
-            let enumerator = DeviceEnumerator::new().map_err(|e| err("Perangkat audio tidak ditemukan", e))?;
-            let device = enumerator.get_default_device(&direction).map_err(|e| err("Perangkat audio tidak ditemukan", e))?;
+            let enumerator = DeviceEnumerator::new().map_err(|e| err(tr("Perangkat audio tidak ditemukan", "Audio device not found"), e))?;
+            let device = enumerator.get_default_device(&direction).map_err(|e| err(tr("Perangkat audio tidak ditemukan", "Audio device not found"), e))?;
             let name = device.get_friendlyname().unwrap_or_default();
-            let mut client = device.get_iaudioclient().map_err(|e| err("Perangkat audio tidak ditemukan", e))?;
-            let mix = client.get_mixformat().map_err(|e| err("Format audio", e))?;
+            let mut client = device.get_iaudioclient().map_err(|e| err(tr("Perangkat audio tidak ditemukan", "Audio device not found"), e))?;
+            let mix = client.get_mixformat().map_err(|e| err(tr("Format audio", "Audio format"), e))?;
             let rate = mix.get_samplespersec();
             let channels = mix.get_nchannels().clamp(1, 2) as usize;
             // Let Windows convert to float at the device rate; the writer resamples to 16 kHz.
             let format = WaveFormat::new(32, 32, &SampleType::Float, rate as usize, channels, None);
-            let (_, min_period) = client.get_device_period().map_err(|e| err("Gagal mulai merekam", e))?;
+            let (_, min_period) = client.get_device_period().map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
             let mode = StreamMode::EventsShared { autoconvert: true, buffer_duration_hns: min_period.max(200_000) };
             // A render device opened for capture is WASAPI loopback.
-            client.initialize_client(&format, &Direction::Capture, &mode).map_err(|e| err("Gagal mulai merekam", e))?;
-            let event = client.set_get_eventhandle().map_err(|e| err("Gagal mulai merekam", e))?;
-            let capture = client.get_audiocaptureclient().map_err(|e| err("Gagal mulai merekam", e))?;
-            let writer = TrackWriter::new(path, rate, channels, state.clone()).map_err(|e| err("Gagal membuat file", e))?;
-            client.start_stream().map_err(|e| err("Gagal mulai merekam", e))?;
+            client.initialize_client(&format, &Direction::Capture, &mode).map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
+            let event = client.set_get_eventhandle().map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
+            let capture = client.get_audiocaptureclient().map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
+            let writer = TrackWriter::new(path, rate, channels, state.clone()).map_err(|e| err(tr("Gagal membuat file", "Could not create the file"), e))?;
+            client.start_stream().map_err(|e| err(tr("Gagal mulai merekam", "Could not start recording"), e))?;
             Ok((name, client, event, capture, writer))
         };
         let (name, client, event, capture, mut writer) = match setup() {

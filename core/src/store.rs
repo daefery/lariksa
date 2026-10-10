@@ -59,6 +59,7 @@ pub fn default_settings() -> Map<String, Value> {
         "theme": "light",
         "hotkey": DEFAULT_HOTKEY,    // global start/stop shortcut; "" disables it
         "show_pill": true,           // floating always-on-top recording indicator
+        "ui_language": "id",         // language of the app's own screens and messages: id | en
     });
     v.as_object().unwrap().clone()
 }
@@ -71,8 +72,12 @@ pub fn human_date(t: &NaiveDateTime) -> String {
 }
 
 /// Title given to a meeting the user did not name; notulen may replace it.
-pub fn default_title(t: &NaiveDateTime) -> String {
-    format!("Rapat {}", human_date(t))
+pub fn default_title(english: bool, t: &NaiveDateTime) -> String {
+    if english {
+        format!("Meeting {}", human_date(t))
+    } else {
+        format!("Rapat {}", human_date(t))
+    }
 }
 
 pub fn parse_iso(iso: &str) -> Option<NaiveDateTime> {
@@ -101,7 +106,7 @@ pub struct Meeting {
 
 impl Meeting {
     pub fn has_default_title(&self) -> bool {
-        parse_iso(&self.created_at).is_some_and(|t| self.title == default_title(&t))
+        parse_iso(&self.created_at).is_some_and(|t| [false, true].iter().any(|en| self.title == default_title(*en, &t)))
     }
 
     pub fn summary_value(&self) -> Value {
@@ -206,7 +211,7 @@ impl Store {
         let now = now.unwrap_or_else(|| Local::now().naive_local()).with_nanosecond(0).unwrap();
         let meeting = Meeting {
             id: format!("{}-{}", now.format("%Y%m%d-%H%M%S"), random_hex(6)),
-            title: if title.is_empty() { default_title(&now) } else { title.to_string() },
+            title: if title.is_empty() { default_title(crate::i18n::is_english(), &now) } else { title.to_string() },
             created_at: now.format("%Y-%m-%dT%H:%M:%S").to_string(),
             status: status.into(),
             duration: 0.0,
@@ -422,6 +427,7 @@ mod tests {
 
     #[test]
     fn create_get_update_roundtrip() {
+        let _language = crate::i18n::test_lock();
         let (_d, store) = store();
         let m = store.create("", "record", "id", RECORDING, Some(at(2026, 10, 9, 14, 30))).unwrap();
         assert_eq!(m.title, "Rapat 9 Okt 2026, 14:30");

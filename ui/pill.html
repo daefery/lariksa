@@ -40,17 +40,18 @@ button:focus-visible{outline:2px solid #C9F27A;outline-offset:2px}
     <span class="dot pywebview-drag-region" id="dot"></span>
     <div class="text pywebview-drag-region">
       <span class="big pywebview-drag-region" id="big">00:00</span>
-      <span class="small pywebview-drag-region" id="small">Merekam</span>
+      <span class="small pywebview-drag-region" id="small" data-i18n="pill.recording">Merekam</span>
     </div>
     <div class="meters pywebview-drag-region" id="meters" aria-hidden="true">
       <i></i><i></i><i></i><i class="sys"></i><i class="sys"></i><i class="sys"></i>
     </div>
   </div>
-  <button class="stop" id="stop" title="Selesai merekam"><b></b><span id="stop-label">Selesai</span></button>
-  <button class="open hidden" id="open">Buka</button>
-  <button class="close hidden" id="close" title="Tutup indikator" aria-label="Tutup">×</button>
+  <button class="stop" id="stop" title="Selesai merekam"><b></b><span id="stop-label" data-i18n="pill.stop">Selesai</span></button>
+  <button class="open hidden" id="open" data-i18n="pill.open">Buka</button>
+  <button class="close hidden" id="close" title="Tutup indikator" aria-label="Tutup" data-i18n-title="pill.close" data-i18n-aria="pill.close">×</button>
 </div>
 <div class="bar" id="bar"></div>
+<script src="i18n.js"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -64,7 +65,6 @@ function clock(s) {
   return h ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`;
 }
 
-const STAGE = { queued: "Menunggu", transcribing: "Transkripsi", summarizing: "Menyusun notulen" };
 
 function render(s) {
   const recording = s.recording;
@@ -79,8 +79,8 @@ function render(s) {
   if (recording) {
     $("big").textContent = clock(s.elapsed);
     const silent = s.silent || [];
-    $("small").textContent = silent.includes("mic") ? "Mic tidak terdengar"
-      : silent.includes("system") ? "Belum ada suara peserta" : (hotkey ? `Merekam · ${hotkey}` : "Merekam");
+    $("small").textContent = silent.includes("mic") ? t("pill.mic.silent")
+      : silent.includes("system") ? t("pill.system.silent") : (hotkey ? t("pill.recording.hotkey", { hotkey }) : t("pill.recording"));
     const bars = [...document.querySelectorAll(".meters i")];
     const mic = (s.levels || {}).mic || 0, sys = (s.levels || {}).system || 0;
     bars.forEach((b, i) => {
@@ -92,22 +92,31 @@ function render(s) {
   } else if (busy) {
     const p = s.activity.progress || 0;
     $("big").textContent = s.activity.stage === "queued" ? "…" : `${Math.round(p * 100)}%`;
-    $("small").textContent = `${STAGE[s.activity.stage] || "Memproses"}${s.queue ? ` · ${s.queue} antre` : ""}`;
+    const stage = ["queued", "transcribing", "summarizing"].includes(s.activity.stage) ? t(`pill.stage.${s.activity.stage}`) : t("pill.processing");
+    $("small").textContent = stage + (s.queue ? t("pill.queue", { n: s.queue }) : "");
     $("bar").style.width = `${Math.round(p * 100)}%`;
   } else {
-    $("big").textContent = "Selesai";
-    $("small").textContent = "Notulen siap";
+    $("big").textContent = t("pill.done");
+    $("small").textContent = t("pill.ready");
     $("bar").style.width = "100%";
   }
 }
 
+function setStopTitle() {
+  $("stop").title = hotkey ? t("pill.stop.title.hotkey", { hotkey }) : t("pill.stop.title");
+}
+
 async function poll() {
-  try { render(await api().status()); } catch (e) { /* window closing */ }
+  try {
+    const s = await api().status();
+    if (setUiLanguage(s.settings.ui_language)) setStopTitle();
+    render(s);
+  } catch (e) { /* window closing */ }
 }
 
 window.addEventListener("pywebviewready", async () => {
   hotkey = (await api().hotkey_label()) || "";
-  $("stop").title = hotkey ? `Selesai merekam (${hotkey})` : "Selesai merekam";
+  setStopTitle();
   $("stop").addEventListener("click", async () => { $("stop").disabled = true; await api().stop_recording(); $("stop").disabled = false; poll(); });
   $("open").addEventListener("click", () => api().show_main());
   $("close").addEventListener("click", () => api().hide_pill());

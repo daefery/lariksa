@@ -8,6 +8,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::fs::File;
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
+use crate::i18n::tr;
 
 pub const TARGET_RATE: u32 = 16_000;
 
@@ -298,18 +299,18 @@ fn decode_symphonia(source: &Path, target: &Path) -> Result<f64> {
     }
     let mut format = symphonia::default::get_probe()
         .probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())
-        .map_err(|e| anyhow!("Format audio tidak dikenali: {e}"))?;
-    let track = format.default_track(TrackType::Audio).ok_or_else(|| anyhow!("File tidak berisi audio."))?;
+        .map_err(|e| anyhow!("{}: {e}", tr("Format audio tidak dikenali", "Audio format not recognised")))?;
+    let track = format.default_track(TrackType::Audio).ok_or_else(|| anyhow!("{}", tr("File tidak berisi audio.", "The file has no audio.")))?;
     let params = track
         .codec_params
         .as_ref()
         .and_then(|p| p.audio())
-        .ok_or_else(|| anyhow!("Codec audio tidak dikenali."))?
+        .ok_or_else(|| anyhow!("{}", tr("Codec audio tidak dikenali.", "Audio codec not recognised.")))?
         .clone();
     let track_id = track.id;
     let mut decoder = registry
         .make_audio_decoder(&params, &AudioDecoderOptions::default())
-        .map_err(|e| anyhow!("Codec audio tidak didukung: {e}"))?;
+        .map_err(|e| anyhow!("{}: {e}", tr("Codec audio tidak didukung", "Audio codec not supported")))?;
 
     let mut writer = WavWriter::create(target, TARGET_RATE)?;
     let mut resampler: Option<(u32, usize, Downsampler)> = None;
@@ -320,7 +321,7 @@ fn decode_symphonia(source: &Path, target: &Path) -> Result<f64> {
             Ok(None) => break,
             Err(Error::ResetRequired) => break,
             Err(Error::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-            Err(e) => return Err(anyhow!("Gagal membaca audio: {e}")),
+            Err(e) => return Err(anyhow!("{}: {e}", tr("Gagal membaca audio", "Could not read the audio"))),
         };
         if packet.track_id != track_id {
             continue;
@@ -328,7 +329,7 @@ fn decode_symphonia(source: &Path, target: &Path) -> Result<f64> {
         let decoded = match decoder.decode(&packet) {
             Ok(d) => d,
             Err(Error::DecodeError(_)) | Err(Error::IoError(_)) => continue,
-            Err(e) => return Err(anyhow!("Gagal mendekode audio: {e}")),
+            Err(e) => return Err(anyhow!("{}: {e}", tr("Gagal mendekode audio", "Could not decode the audio"))),
         };
         let rate = decoded.spec().rate();
         let channels = decoded.spec().channels().count().max(1);
@@ -350,7 +351,7 @@ fn decode_symphonia(source: &Path, target: &Path) -> Result<f64> {
     let frames = writer.frames();
     writer.finish()?;
     if frames == 0 {
-        bail!("File tidak berisi audio yang bisa dibaca.");
+        bail!("{}", tr("File tidak berisi audio yang bisa dibaca.", "The file has no readable audio."));
     }
     Ok(frames as f64 / TARGET_RATE as f64)
 }
@@ -420,7 +421,7 @@ mod media_foundation {
         let frames = writer.frames();
         writer.finish()?;
         if frames == 0 {
-            bail!("File tidak berisi audio yang bisa dibaca.");
+            bail!("{}", tr("File tidak berisi audio yang bisa dibaca.", "The file has no readable audio."));
         }
         Ok(frames as f64 / TARGET_RATE as f64)
     }

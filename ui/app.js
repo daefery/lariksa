@@ -6,11 +6,9 @@ const $ = (id) => document.getElementById(id);
 const api = () => window.pywebview.api;
 const state = { view: "home", current: null, meetings: [], status: null, search: "", dirty: false };
 
-const STAGES = { queued: "Menunggu giliran", transcribing: "Mentranskripsi", summarizing: "Menyusun notulen" };
-const STATUS_BADGE = {
-  recording: ["busy", "Merekam"], queued: ["busy", "Menunggu"], transcribing: ["busy", "Transkripsi"],
-  summarizing: ["busy", "Menyusun notulen"], done: ["ok", "Selesai"], failed: ["fail", "Gagal"],
-};
+const BADGE_KIND = { recording: "busy", queued: "busy", transcribing: "busy", summarizing: "busy", done: "ok", failed: "fail" };
+const statusLabel = (status) => (BADGE_KIND[status] ? t(`status.${status}`) : status);
+const stageLabel = (stage) => (["queued", "transcribing", "summarizing"].includes(stage) ? t(`stage.${stage}`) : "");
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -31,15 +29,15 @@ function toast(text) {
   toast.timer = setTimeout(() => t.classList.add("hidden"), 2600);
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const months = () => t("months").split(",");
 function when(iso) {
   const d = new Date(iso);
   const today = new Date();
   const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  if (d.toDateString() === today.toDateString()) return `Hari ini, ${time}`;
+  if (d.toDateString() === today.toDateString()) return t("date.today", { time });
   const y = new Date(today); y.setDate(today.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return `Kemarin, ${time}`;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${time}`;
+  if (d.toDateString() === y.toDateString()) return t("date.yesterday", { time });
+  return `${d.getDate()} ${months()[d.getMonth()]} ${d.getFullYear()}, ${time}`;
 }
 function duration(s) {
   s = Math.round(s || 0);
@@ -49,8 +47,7 @@ function duration(s) {
 function clock(s) { return duration(s); }
 function bytes(n) { return n > 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`; }
 function badge(status) {
-  const [kind, label] = STATUS_BADGE[status] || ["", status];
-  return el("span", { class: `badge ${kind}` }, label);
+  return el("span", { class: `badge ${BADGE_KIND[status] || ""}` }, statusLabel(status));
 }
 
 // ---------------------------------------------------------------- views
@@ -64,9 +61,9 @@ function show(view) {
 
 function greet() {
   const h = new Date().getHours();
-  $("greeting").textContent = h < 11 ? "Selamat pagi." : h < 15 ? "Selamat siang." : h < 19 ? "Selamat sore." : "Selamat malam.";
+  $("greeting").textContent = t(h < 11 ? "greeting.morning" : h < 15 ? "greeting.day" : h < 19 ? "greeting.afternoon" : "greeting.evening");
   const d = new Date();
-  $("greeting-eyebrow").textContent = `${["MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"][d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()].toUpperCase()}`;
+  $("greeting-eyebrow").textContent = `${t("days").split(",")[d.getDay()]}, ${d.getDate()} ${months()[d.getMonth()].toUpperCase()}`;
 }
 
 // ---------------------------------------------------------------- list + cards
@@ -81,7 +78,7 @@ function renderList() {
   list.replaceChildren(...state.meetings.map((m) =>
     el("li", { class: state.current === m.id ? "active" : "", onclick: () => openMeeting(m.id), title: m.title },
       el("span", { class: "t" }, m.title),
-      el("small", {}, `${when(m.created_at)}${m.status !== "done" ? " · " + (STATUS_BADGE[m.status] || [, m.status])[1] : ""}`))));
+      el("small", {}, `${when(m.created_at)}${m.status !== "done" ? " · " + statusLabel(m.status) : ""}`))));
 }
 
 function renderCards() {
@@ -89,7 +86,7 @@ function renderCards() {
   const recent = state.meetings.slice(0, 6);
   if (!recent.length) {
     cards.replaceChildren(el("div", { class: "empty" },
-      state.search ? "Tidak ada rapat yang cocok." : "Halaman baru untuk rapat berikutnya. Tekan Rekam saat rapat dimulai."));
+      t(state.search ? "empty.search" : "empty.none")));
     return;
   }
   cards.replaceChildren(...recent.map((m) =>
@@ -97,8 +94,8 @@ function renderCards() {
       onkeydown: (e) => e.key === "Enter" && openMeeting(m.id) },
       m.status === "done" ? null : badge(m.status),
       el("strong", {}, m.title),
-      el("p", {}, m.preview || (m.status === "failed" ? "Proses gagal. Buka untuk mencoba lagi." : "Notulen sedang disiapkan…")),
-      el("small", {}, `${when(m.created_at)} · ${duration(m.duration)}${m.action_count ? ` · ${m.action_count} action item` : ""}`))));
+      el("p", {}, m.preview || t(m.status === "failed" ? "card.failed" : "card.pending")),
+      el("small", {}, `${when(m.created_at)} · ${duration(m.duration)}${m.action_count ? " · " + t("card.actions", { n: m.action_count }) : ""}`))));
 }
 
 // ---------------------------------------------------------------- meeting detail
@@ -116,9 +113,9 @@ async function renderMeeting(resetTab = false) {
   if (!m) { show("home"); return; }
   state.meeting = m;
   if (document.activeElement !== $("m-title")) $("m-title").value = m.title;
-  $("m-meta").textContent = `${when(m.created_at)} · ${duration(m.duration)} · ${m.source === "import" ? "Impor" : "Rekaman"}` +
-    (m.timings.transcribe_s ? ` · transkripsi ${Math.round(m.timings.transcribe_s)} dtk` : "") +
-    (m.timings.summarize_s ? ` · notulen ${Math.round(m.timings.summarize_s)} dtk` : "");
+  $("m-meta").textContent = `${when(m.created_at)} · ${duration(m.duration)} · ${t(m.source === "import" ? "meta.import" : "meta.record")}` +
+    (m.timings.transcribe_s ? " · " + t("meta.transcribe", { n: Math.round(m.timings.transcribe_s) }) : "") +
+    (m.timings.summarize_s ? " · " + t("meta.summarize", { n: Math.round(m.timings.summarize_s) }) : "");
 
   const busy = ["recording", "queued", "transcribing", "summarizing"].includes(m.status);
   $("m-progress").classList.toggle("hidden", !busy);
@@ -128,9 +125,9 @@ async function renderMeeting(resetTab = false) {
 
   const err = $("m-error");
   if (m.status === "failed") {
-    err.replaceChildren(el("div", {}, m.error || "Proses gagal."),
-      el("button", { onclick: () => retry(false) }, "Coba lagi"),
-      m.transcript.length ? el("button", { class: "ghost", style: "margin-left:8px", onclick: () => retry(true) }, "Ulangi notulen saja") : null);
+    err.replaceChildren(el("div", {}, m.error || t("failed.default")),
+      el("button", { onclick: () => retry(false) }, t("retry")),
+      m.transcript.length ? el("button", { class: "ghost", style: "margin-left:8px", onclick: () => retry(true) }, t("retry.summary")) : null);
     err.classList.remove("hidden");
   } else err.classList.add("hidden");
 
@@ -146,13 +143,13 @@ function updateProgress() {
   const m = state.meeting, s = state.status;
   if (!m || !s) return;
   const bar = $("m-progress");
-  let label = STATUS_BADGE[m.status]?.[1] || "";
+  let label = statusLabel(m.status);
   let value = 0;
   if (s.activity.meeting_id === m.id) {
-    label = STAGES[s.activity.stage] || label;
+    label = stageLabel(s.activity.stage) || label;
     value = s.activity.progress;
-  } else if (m.status === "queued") label = s.activity.meeting_id ? "Menunggu rapat lain selesai diproses" : "Menunggu";
-  else if (m.status === "recording") label = "Sedang merekam";
+  } else if (m.status === "queued") label = s.activity.meeting_id ? t("progress.waiting.other") : statusLabel("queued");
+  else if (m.status === "recording") label = t("progress.recording");
   bar.querySelector("b").style.width = `${Math.round(value * 100)}%`;
   bar.querySelector("span").textContent = value ? `${label} · ${Math.round(value * 100)}%` : label;
 }
@@ -181,7 +178,7 @@ function avatar(name) {
 function tsChip(seconds, refs) {
   // Items without an anchor (notulen from the old format) get no chip: "00:00" would be a lie.
   if (!refs || !refs.length) return null;
-  return el("button", { class: "ts", title: "Lompat ke momen ini",
+  return el("button", { class: "ts", title: t("jump.title"),
     onclick: (e) => { e.stopPropagation(); jumpTo(seconds, refs[0]); } }, clock(seconds));
 }
 
@@ -208,10 +205,10 @@ function renderNotulen(m) {
   const body = $("tab-notulen");
   const n = m.notulen;
   if (!n) {
-    body.replaceChildren(el("p", { class: "lede" }, m.status === "failed" ? "Notulen belum tersedia." : "Notulen akan muncul di sini setelah rapat diproses."));
+    body.replaceChildren(el("p", { class: "lede" }, t(m.status === "failed" ? "notulen.unavailable" : "notulen.pending")));
     return;
   }
-  const t = m.labels;
+  const L = m.labels;
   const legacy = n.version < 2;
 
   // Action items grouped by owner, in order of first appearance.
@@ -222,10 +219,10 @@ function renderNotulen(m) {
     groups.get(key).push([a, i]);
   });
   const actionBlocks = [...groups.entries()].map(([owner, items]) => el("div", { class: "owner-group" },
-    el("div", { class: "owner-head" }, avatar(owner || "?"), el("b", {}, owner || t.unassigned),
+    el("div", { class: "owner-head" }, avatar(owner || "?"), el("b", {}, owner || L.unassigned),
       el("small", {}, `${items.filter(([a]) => a.done).length}/${items.length}`)),
     ...items.map(([a, i]) => el("div", { class: `action${a.done ? " done" : ""}`, "data-i": i },
-      el("input", { type: "checkbox", checked: a.done, "aria-label": "Selesai",
+      el("input", { type: "checkbox", checked: a.done, "aria-label": t("action.done.aria"),
         onchange: (e) => { a.done = e.target.checked; e.target.closest(".action").classList.toggle("done", a.done); state.dirty = true; saveNotulen(); } }),
       editable("div", a.task, { class: "task", "data-field": "task" }),
       el("div", { class: "side" }, a.due ? el("span", { class: "due" }, a.due) : null, tsChip(a.start, a.refs))))));
@@ -235,17 +232,17 @@ function renderNotulen(m) {
     editable("span", p.text, { "data-field": "text" }), tsChip(p.start, p.refs))));
 
   body.replaceChildren(...[
-    legacy ? el("div", { class: "legacy-note" }, "Notulen ini dibuat dengan versi lama. Tekan ↻ Notulen untuk membuat ulang dengan bab, waktu, dan PIC.") : null,
-    sec(t.summary, null,
+    legacy ? el("div", { class: "legacy-note" }, t("notulen.legacy")) : null,
+    sec(L.summary, null,
       editable("p", n.overview, { class: "overview", "data-key": "overview" }),
       n.highlights.length ? el("ul", { class: "highlights", "data-key": "highlights" }, n.highlights.map((h) => editable("li", h))) : null),
-    sec(t.actions, n.actions.length, n.actions.length ? el("div", { id: "actions" }, actionBlocks) : el("p", { class: "muted" }, t.none)),
-    n.decisions.length ? sec(t.decisions, n.decisions.length, Object.assign(pointList(n.decisions, "d"), { id: "decisions" })) : null,
-    n.questions.length ? sec(t.questions, n.questions.length, Object.assign(pointList(n.questions, "q"), { id: "questions" })) : null,
-    n.chapters.length ? sec(t.chapters, n.chapters.length, el("div", { id: "chapters" }, n.chapters.map((c, i) =>
+    sec(L.actions, n.actions.length, n.actions.length ? el("div", { id: "actions" }, actionBlocks) : el("p", { class: "muted" }, L.none)),
+    n.decisions.length ? sec(L.decisions, n.decisions.length, Object.assign(pointList(n.decisions, "d"), { id: "decisions" })) : null,
+    n.questions.length ? sec(L.questions, n.questions.length, Object.assign(pointList(n.questions, "q"), { id: "questions" })) : null,
+    n.chapters.length ? sec(L.chapters, n.chapters.length, el("div", { id: "chapters" }, n.chapters.map((c, i) =>
       el("div", { class: "chapter", "data-i": i }, el("div", {}, tsChip(c.start, c.refs)),
         el("div", {}, editable("h4", c.title, { "data-field": "title" }), editable("p", c.summary, { "data-field": "summary" })))))) : null,
-    el("p", { class: "hint" }, "Klik teks mana pun untuk mengedit, centang tugas yang selesai. Klik waktu untuk lompat ke momennya."),
+    el("p", { class: "hint" }, t("notulen.hint")),
   ].filter(Boolean));
 }
 
@@ -333,7 +330,7 @@ function wirePlayer() {
 function renderTranscript(m) {
   const body = $("tab-transcript");
   if (!m.lines?.length) {
-    body.replaceChildren(el("p", { class: "lede" }, "Transkrip akan muncul di sini."));
+    body.replaceChildren(el("p", { class: "lede" }, t("transcript.pending")));
     return;
   }
   const chapters = (m.notulen?.chapters || []).slice().sort((a, b) => a.start - b.start);
@@ -402,7 +399,7 @@ async function toggleRecord() {
     if (state.status?.recording) {
       const r = await api().stop_recording();
       if (!r.ok) toast(r.error);
-      else { toast("Rekaman disimpan. Notulen sedang disiapkan."); $("meeting-title").value = ""; await loadMeetings(); }
+      else { toast(t("toast.saved.recording")); $("meeting-title").value = ""; await loadMeetings(); }
     } else {
       const r = await api().start_recording($("meeting-title").value);
       if (!r.ok) toast(r.error);
@@ -416,19 +413,15 @@ function renderRecorder(s) {
   const live = s.recording;
   $("record-card").classList.toggle("live", live);
   $("meters").classList.toggle("hidden", !live);
-  $("record-label").textContent = live ? "Selesai" : "Rekam";
-  $("record-title").textContent = live ? `Merekam · ${duration(s.elapsed)}` : "Mulai rapat";
+  $("record-label").textContent = t(live ? "record.stop" : "record.button");
+  $("record-title").textContent = live ? t("record.live.title", { time: duration(s.elapsed) }) : t("record.start.title");
   $("record-sub").textContent = live
-    ? `Mic: ${s.devices.mic || "-"} · Audio rapat: ${s.devices.system || "-"}`
-    : "Rekam suaramu dan suara peserta dari Meet, Zoom, atau Teams.";
+    ? t("record.live.sub", { mic: s.devices.mic || "-", system: s.devices.system || "-" })
+    : t("record.start.sub");
   const consent = $("consent");
   const silent = live ? s.silent || [] : [];
   consent.classList.toggle("warn", silent.length > 0);
-  consent.textContent = silent.includes("mic")
-    ? "Mic tidak menangkap suara. Cek tombol mute di laptop atau di Zoom/Meet."
-    : silent.includes("system")
-      ? "Belum ada suara peserta. Pastikan audio rapat keluar dari speaker/headset default."
-      : "Beri tahu peserta bahwa rapat ini direkam.";
+  consent.textContent = t(silent.includes("mic") ? "consent.mic" : silent.includes("system") ? "consent.system" : "consent");
   $("lvl-mic").style.width = `${Math.min(100, (s.levels.mic || 0) * 140)}%`;
   $("lvl-system").style.width = `${Math.min(100, (s.levels.system || 0) * 140)}%`;
   $("record").disabled = !s.ready && !live;
@@ -436,9 +429,9 @@ function renderRecorder(s) {
   hint.classList.toggle("hidden", !state.hotkeyLabel);
   if (state.hotkeyLabel) {
     hint.replaceChildren(...state.hotkeyLabel.split("+").flatMap((k, i) => [i ? " + " : "", el("kbd", {}, k)]),
-      live ? " untuk selesai, dari aplikasi mana pun" : " untuk mulai, dari aplikasi mana pun");
+      t(live ? "record.hotkey.stop" : "record.hotkey.start"));
   }
-  $("record").title = s.ready ? "" : "Unduh model AI dulu";
+  $("record").title = s.ready ? "" : t("record.notready");
 }
 
 // ---------------------------------------------------------------- setup + settings
@@ -450,12 +443,12 @@ function renderSetup(s) {
   const dl = s.activity.downloads;
   $("setup-list").replaceChildren(...missing.map((k) => {
     const d = dl[k];
-    const right = d ? (d.error ? "Gagal" : `${Math.round((d.done / d.total) * 100)}%`) : bytes(s.assets[k].size);
+    const right = d ? (d.error ? t("setup.failed") : `${Math.round((d.done / d.total) * 100)}%`) : bytes(s.assets[k].size);
     return el("li", {}, el("span", {}, s.assets[k].label), el("span", {}, right));
   }));
   const downloading = Object.keys(dl).length && !Object.values(dl).some((d) => d.error);
   $("setup-go").disabled = !!downloading;
-  $("setup-go").textContent = downloading ? "Mengunduh…" : `Unduh semua (${bytes(missing.reduce((a, k) => a + s.assets[k].size, 0))})`;
+  $("setup-go").textContent = downloading ? t("setup.going") : t("setup.go", { size: bytes(missing.reduce((a, k) => a + s.assets[k].size, 0)) });
 }
 
 async function downloadAssets(keys) {
@@ -470,9 +463,9 @@ function renderAssets(s) {
   box.replaceChildren(...keys.map((k) => {
     const a = s.assets[k], d = s.activity.downloads[k];
     let right;
-    if (a.installed) right = el("span", { class: "ok" }, "Terpasang");
+    if (a.installed) right = el("span", { class: "ok" }, t("asset.installed"));
     else if (d && !d.error) right = el("span", {}, `${Math.round((d.done / d.total) * 100)}%`);
-    else right = el("button", { class: "ghost", onclick: () => downloadAssets([k]) }, d?.error ? "Coba lagi" : "Unduh");
+    else right = el("button", { class: "ghost", onclick: () => downloadAssets([k]) }, t(d?.error ? "asset.retry" : "asset.download"));
     return el("div", { class: "asset" },
       el("div", {}, el("div", { class: "name" }, a.label),
         el("small", {}, bytes(a.size)),
@@ -484,6 +477,7 @@ function renderAssets(s) {
 function renderSettings() {
   const s = state.status;
   if (!s) return;
+  $("s-ui-language").value = s.settings.ui_language || "id";
   $("s-language").value = s.settings.language;
   $("s-notulen-language").value = s.settings.notulen_language;
   $("s-whisper").value = s.settings.whisper_model;
@@ -496,12 +490,13 @@ function renderSettings() {
 
 async function saveSettings() {
   const saved = await api().save_settings({
-    language: $("s-language").value, notulen_language: $("s-notulen-language").value,
+    ui_language: $("s-ui-language").value, language: $("s-language").value, notulen_language: $("s-notulen-language").value,
     whisper_model: $("s-whisper").value, glossary: $("s-glossary").value,
     hotkey: $("s-hotkey").value.trim(), show_pill: $("s-pill").checked,
   });
   state.hotkeyError = saved.hotkey_error || "";
   state.hotkeyLabel = state.hotkeyError ? "" : (saved.hotkey || "");
+  applyLanguage(saved.ui_language);
   $("s-saved").classList.remove("hidden");
   setTimeout(() => $("s-saved").classList.add("hidden"), 2000);
   await poll();
@@ -515,7 +510,7 @@ async function poll() {
   state.status = s;
   renderRecorder(s);
   renderSetup(s);
-  $("engine-label").textContent = `Mesin: ${s.compute.label}`;
+  $("engine-label").textContent = t("engine", { label: s.compute.label });
   if (state.view === "settings" && document.activeElement?.tagName !== "TEXTAREA") renderAssets(s);
   if (state.view === "meeting") updateProgress();
 
@@ -549,7 +544,7 @@ function wire() {
   $("import").addEventListener("click", async () => {
     const r = await api().import_audio();
     if (r && !r.ok && r.error) toast(r.error);
-    else if (r?.ok) { toast("Rekaman diimpor. Notulen sedang disiapkan."); loadMeetings(); }
+    else if (r?.ok) { toast(t("toast.imported")); loadMeetings(); }
   });
   $("m-title").addEventListener("change", async (e) => {
     const r = await api().rename(state.current, e.target.value);
@@ -558,7 +553,7 @@ function wire() {
   $("tab-notulen").addEventListener("focusout", () => saveNotulen());
   $("m-find").addEventListener("input", () => applyFind());
   $("regen").addEventListener("click", async () => {
-    if (!confirm("Tulis ulang notulen dari transkrip? Suntingan pada notulen ini akan diganti.")) return;
+    if (!confirm(t("confirm.regen"))) return;
     await retry(true);
   });
   wirePlayer();
@@ -566,14 +561,14 @@ function wire() {
     await saveNotulen();
     const m = await api().meeting(state.current);
     await api().copy_text(m.whatsapp);
-    toast("Disalin. Tempel di WhatsApp.");
+    toast(t("toast.copied"));
   });
-  $("export-docx").addEventListener("click", async () => { await saveNotulen(); const r = await api().export(state.current, "docx"); if (r?.ok) toast("DOCX tersimpan."); else if (r?.error) toast(r.error); });
-  $("export-md").addEventListener("click", async () => { await saveNotulen(); const r = await api().export(state.current, "md"); if (r?.ok) toast("Markdown tersimpan."); else if (r?.error) toast(r.error); });
+  $("export-docx").addEventListener("click", async () => { await saveNotulen(); const r = await api().export(state.current, "docx"); if (r?.ok) toast(t("toast.docx")); else if (r?.error) toast(r.error); });
+  $("export-md").addEventListener("click", async () => { await saveNotulen(); const r = await api().export(state.current, "md"); if (r?.ok) toast(t("toast.md")); else if (r?.error) toast(r.error); });
   $("delete").addEventListener("click", async () => {
-    if (!confirm("Hapus rapat ini beserta rekaman audionya? Tindakan ini tidak bisa dibatalkan.")) return;
+    if (!confirm(t("confirm.delete"))) return;
     const r = await api().delete(state.current);
-    if (!r.ok) toast(r.error); else { toast("Rapat dihapus."); show("home"); loadMeetings(); }
+    if (!r.ok) toast(r.error); else { toast(t("toast.deleted")); show("home"); loadMeetings(); }
   });
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("search").focus(); }
@@ -583,7 +578,17 @@ function wire() {
 function showHotkeyError(error) {
   const note = $("s-hotkey-note");
   note.classList.toggle("warn-text", !!error);
-  note.textContent = error || "Tekan saat Zoom atau Meet terbuka untuk mulai atau selesai merekam. Kosongkan untuk mematikan.";
+  note.textContent = error || t("s.hotkey.note");
+}
+
+/** Switch the display language and redraw everything drawn from code. */
+function applyLanguage(lang) {
+  if (!setUiLanguage(lang)) return;
+  greet();
+  if (state.status) { renderRecorder(state.status); renderSetup(state.status); $("engine-label").textContent = t("engine", { label: state.status.compute.label }); }
+  renderList(); renderCards();
+  if (state.view === "settings") renderSettings();
+  if (state.view === "meeting" && state.current) renderMeeting();
 }
 
 async function boot() {
@@ -593,6 +598,7 @@ async function boot() {
   state.hotkeyError = await api().hotkey_error();
   const s = await api().status();
   document.documentElement.dataset.theme = s.settings.theme || "light";
+  applyLanguage(s.settings.ui_language);
   await poll();
   setInterval(poll, 500);
 }

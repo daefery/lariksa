@@ -14,6 +14,7 @@ use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use crate::audio::repair_wav;
 use crate::catalog::{self, Asset};
 use crate::hardware::{self, Device};
+use crate::i18n::tr;
 use crate::llm::LocalLlm;
 use crate::media::MediaServer;
 use crate::minutes::{lines_from, Action, Chapter, Minutes, Point};
@@ -163,6 +164,7 @@ impl LariksaService {
             gpu: OnceLock::new(),
             engines,
         });
+        crate::i18n::set_language(&setting_str(&svc.store.settings(), "ui_language"));
         svc.recover();
         svc.detect_gpu_in_background();
         let worker = svc.clone();
@@ -256,7 +258,7 @@ impl LariksaService {
         let settings = self.store.settings();
         let assets: Map<String, Value> = catalog::assets()
             .into_iter()
-            .map(|a| (a.key.to_string(), json!({"label": a.label, "size": a.size(), "installed": a.installed(&self.paths)})))
+            .map(|a| (a.key.to_string(), json!({"label": a.label(), "size": a.size(), "installed": a.installed(&self.paths)})))
             .collect();
         let whisper = Self::whisper_asset(&settings);
         let needed = [whisper.key, catalog::VAD_MODEL, catalog::SUMMARY_MODEL, catalog::LLAMA_RUNTIME, catalog::WHISPER_RUNTIME];
@@ -291,10 +293,10 @@ impl LariksaService {
     pub fn download(self: &Arc<Self>, keys: Vec<String>) -> Value {
         let unknown: Vec<&String> = keys.iter().filter(|k| catalog::asset(k).is_none()).collect();
         if !unknown.is_empty() {
-            return fail(format!("Aset tidak dikenal: {unknown:?}"));
+            return fail(format!("{}: {unknown:?}", tr("Aset tidak dikenal", "Unknown asset")));
         }
         if self.downloading.swap(true, Ordering::SeqCst) {
-            return fail("Unduhan lain sedang berjalan.");
+            return fail(tr("Unduhan lain sedang berjalan.", "Another download is already running."));
         }
         let svc = self.clone();
         std::thread::spawn(move || {
@@ -303,7 +305,7 @@ impl LariksaService {
                 let set = |done: u64, total: u64, error: &str| {
                     svc.activity.lock().unwrap().downloads.insert(
                         key.clone(),
-                        json!({"label": asset.label, "done": done, "total": total, "error": error}),
+                        json!({"label": asset.label(), "done": done, "total": total, "error": error}),
                     );
                 };
                 set(0, asset.size(), "");
@@ -331,7 +333,7 @@ impl LariksaService {
         // The main window button, the pill and the global shortcut can all race here.
         let _guard = self.record_lock.lock().unwrap();
         if self.recorder.recording() {
-            return fail("Rekaman sudah berjalan.");
+            return fail(tr("Rekaman sudah berjalan.", "A recording is already running."));
         }
         let settings = self.store.settings();
         let meeting = match self.store.create(title.trim(), "record", &setting_str(&settings, "language"), RECORDING, None) {
@@ -354,7 +356,7 @@ impl LariksaService {
     pub fn stop_recording(&self) -> Value {
         let _guard = self.record_lock.lock().unwrap();
         if !self.recorder.recording() {
-            return fail("Tidak ada rekaman yang berjalan.");
+            return fail(tr("Tidak ada rekaman yang berjalan.", "No recording is running."));
         }
         let duration = self.recorder.stop();
         let id = std::mem::take(&mut *self.recording_id.lock().unwrap());
@@ -366,14 +368,14 @@ impl LariksaService {
     pub fn import_file(&self, source: &Path, title: &str) -> Value {
         let ext = ext_of(source);
         if !source.is_file() || !import_types().contains(&ext.as_str()) {
-            return fail("Format file tidak didukung.");
+            return fail(tr("Format file tidak didukung.", "This file type is not supported."));
         }
         let settings = self.store.settings();
         let mut transcript = vec![];
         if TEXT_TYPES.contains(&ext.as_str()) {
             transcript = transcript_import::load(source).unwrap_or_default();
             if transcript.is_empty() {
-                return fail("Transkrip kosong atau formatnya tidak dikenali.");
+                return fail(tr("Transkrip kosong atau formatnya tidak dikenali.", "The transcript is empty or its format is not recognised."));
             }
         }
         let stem = source.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -441,7 +443,7 @@ impl LariksaService {
     pub fn rename(&self, id: &str, title: &str) -> Value {
         let title = title.trim();
         if title.is_empty() {
-            return fail("Judul tidak boleh kosong.");
+            return fail(tr("Judul tidak boleh kosong.", "The title cannot be empty."));
         }
         match self.store.update(id, Update { title: Some(title.into()), ..Default::default() }) {
             Ok(_) => ok(),
@@ -463,7 +465,7 @@ impl LariksaService {
 
     pub fn retry(&self, id: &str, summary_only: bool) -> Value {
         let Some(m) = self.store.get(id).filter(|m| m.status == DONE || m.status == FAILED) else {
-            return fail("Rapat ini sedang diproses.");
+            return fail(tr("Rapat ini sedang diproses.", "This meeting is being processed."));
         };
         let _ = self.store.update(id, Update { status: Some(QUEUED.into()), error: Some(String::new()), ..Default::default() });
         self.enqueue(Job { meeting_id: id.into(), retry_summary: summary_only && !m.transcript.is_empty() });
@@ -472,7 +474,7 @@ impl LariksaService {
 
     pub fn delete(&self, id: &str) -> Value {
         if id == *self.recording_id.lock().unwrap() || id == self.activity().meeting_id {
-            return fail("Rapat ini sedang direkam atau diproses.");
+            return fail(tr("Rapat ini sedang direkam atau diproses.", "This meeting is being recorded or processed."));
         }
         // The database row goes first: if that fails, the recording must stay.
         if let Err(e) = self.store.delete(id) {
@@ -483,7 +485,9 @@ impl LariksaService {
     }
 
     pub fn save_settings(&self, values: &Map<String, Value>) -> anyhow::Result<Map<String, Value>> {
-        self.store.save_settings(values)
+        let saved = self.store.save_settings(values)?;
+        crate::i18n::set_language(&setting_str(&saved, "ui_language"));
+        Ok(saved)
     }
 
     pub fn export_docx(&self, id: &str, target: &Path) -> Value {
@@ -497,7 +501,7 @@ impl LariksaService {
     }
 
     pub fn export_markdown(&self, id: &str, target: &Path) -> Value {
-        let Some(m) = self.store.get(id) else { return fail("Rapat tidak ditemukan.") };
+        let Some(m) = self.store.get(id) else { return fail(tr("Rapat tidak ditemukan.", "Meeting not found.")) };
         match std::fs::write(target, crate::export::full_markdown(&m, &human_date_of(&m.created_at))) {
             Ok(_) => json!({"ok": true, "path": target}),
             Err(e) => fail(e),
@@ -666,6 +670,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::time::{Duration, Instant};
+    use chrono::Timelike;
 
     /// A recorder that records nothing; ``fail`` makes start() fail like a missing device.
     #[derive(Default)]
@@ -762,6 +767,7 @@ mod tests {
 
     #[test]
     fn worker_survives_an_engine_setup_error() {
+        let _language = crate::i18n::test_lock();
         let dir = tempfile::tempdir().unwrap();
         let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let c = calls.clone();
@@ -815,9 +821,43 @@ mod tests {
         wait_status(&svc, &id, &[DONE]);
         assert_eq!(svc.retry(&id, true)["ok"], true);
         assert_eq!(wait_status(&svc, &id, &[DONE]).status, DONE);
+        // "done" can be seen again before the worker has let go of the meeting.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !svc.activity().meeting_id.is_empty() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
+        }
         assert_eq!(svc.delete(&id)["ok"], true);
         assert!(svc.meeting(&id).is_null());
         assert!(!svc.paths.meeting_dir(&id).exists());
+        svc.shutdown();
+    }
+
+    #[test]
+    fn display_language_switches_messages_and_titles() {
+        let _language = crate::i18n::test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let svc = svc(dir.path());
+        assert_eq!(svc.status()["settings"]["ui_language"], "id");
+        assert_eq!(svc.rename("x", " ")["error"], "Judul tidak boleh kosong.");
+
+        let saved = svc.save_settings(json!({"ui_language": "en"}).as_object().unwrap()).unwrap();
+        assert_eq!(saved["ui_language"], "en");
+        assert_eq!(svc.rename("x", " ")["error"], "The title cannot be empty.");
+        assert_eq!(svc.status()["assets"]["llm"]["label"], "Minutes model (Qwen3 4B Instruct)");
+        let id = id_of(&svc.import_file(&audio_file(dir.path(), "a.wav"), ""));
+        let m = wait_status(&svc, &id, &[DONE]);
+        assert_eq!(m.title, "a"); // imports are named after the file
+        // Default titles in either language count as "not named by the user".
+        let now = chrono::Local::now().naive_local().with_nanosecond(0).unwrap();
+        for english in [false, true] {
+            let title = crate::store::default_title(english, &now);
+            let m = svc.store.create(&title, "record", "id", QUEUED, Some(now)).unwrap();
+            assert!(m.has_default_title(), "{title}");
+        }
+        assert!(crate::store::default_title(true, &now).starts_with("Meeting "));
+
+        svc.save_settings(json!({"ui_language": "id"}).as_object().unwrap()).unwrap();
+        assert_eq!(svc.status()["assets"]["llm"]["label"], "Model notulen (Qwen3 4B Instruct)");
         svc.shutdown();
     }
 
@@ -837,6 +877,7 @@ mod tests {
 
     #[test]
     fn failed_recording_start_leaves_nothing_behind() {
+        let _language = crate::i18n::test_lock();
         let dir = tempfile::tempdir().unwrap();
         let svc = service_with(dir.path(), FakeRecorder { fail: true, ..Default::default() }, fake_engines());
         assert_eq!(svc.start_recording(""), json!({"ok": false, "error": "Perangkat audio tidak ditemukan"}));
@@ -847,6 +888,7 @@ mod tests {
 
     #[test]
     fn record_stop_queues_processing() {
+        let _language = crate::i18n::test_lock();
         let dir = tempfile::tempdir().unwrap();
         let svc = svc(dir.path());
         let started = svc.start_recording("Tes");
@@ -878,6 +920,7 @@ mod tests {
 
     #[test]
     fn rename_and_settings() {
+        let _language = crate::i18n::test_lock();
         let dir = tempfile::tempdir().unwrap();
         let svc = svc(dir.path());
         let id = id_of(&svc.import_file(&audio_file(dir.path(), "a.wav"), ""));

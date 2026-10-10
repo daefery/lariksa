@@ -6,6 +6,7 @@ pub mod catalog;
 pub mod export;
 pub mod hardware;
 pub mod hotkey;
+pub mod i18n;
 pub mod language;
 pub mod llm;
 pub mod media;

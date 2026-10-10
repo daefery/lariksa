@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::paths::Paths;
+use crate::i18n::tr;
 
 const HF: &str = "https://huggingface.co";
 const WHISPER_CPP: (&str, &str) = ("ggerganov/whisper.cpp", "5359861c739e955e79d9a303bcbc70fb988958b1");
@@ -45,7 +46,8 @@ pub enum Base {
 #[derive(Debug, Clone)]
 pub struct Asset {
     pub key: &'static str,
-    pub label: &'static str,
+    /// (Indonesian, English)
+    pub label: (&'static str, &'static str),
     pub base: Base,
     pub folder: &'static str,
     pub files: Vec<RemoteFile>,
@@ -57,6 +59,11 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// The name shown on screen, in the display language.
+    pub fn label(&self) -> &'static str {
+        tr(self.label.0, self.label.1)
+    }
+
     pub fn size(&self) -> u64 {
         self.files.iter().map(|f| f.size).sum()
     }
@@ -109,7 +116,7 @@ pub fn assets() -> Vec<Asset> {
     vec![
         Asset {
             key: WHISPER_TURBO,
-            label: "Model transkripsi (Whisper large-v3-turbo)",
+            label: ("Model transkripsi (Whisper large-v3-turbo)", "Transcription model (Whisper large-v3-turbo)"),
             base: Base::Models,
             folder: "whisper-cpp",
             files: vec![hf(WHISPER_CPP, TURBO_FILE, 574_041_195, "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2")],
@@ -119,7 +126,7 @@ pub fn assets() -> Vec<Asset> {
         },
         Asset {
             key: WHISPER_SMALL,
-            label: "Model transkripsi ringan (Whisper small)",
+            label: ("Model transkripsi ringan (Whisper small)", "Light transcription model (Whisper small)"),
             base: Base::Models,
             folder: "whisper-cpp",
             files: vec![hf(WHISPER_CPP, SMALL_FILE, 264_464_607, "49c8fb02b65e6049d5fa6c04f81f53b867b5ec9540406812c643f177317f779f")],
@@ -131,7 +138,7 @@ pub fn assets() -> Vec<Asset> {
         // inventing text over the empty system track.
         Asset {
             key: VAD_MODEL,
-            label: "Deteksi suara (Silero VAD)",
+            label: ("Deteksi suara (Silero VAD)", "Speech detection (Silero VAD)"),
             base: Base::Models,
             folder: "whisper-cpp",
             files: vec![hf(VAD, VAD_FILE, 885_098, "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987")],
@@ -141,7 +148,7 @@ pub fn assets() -> Vec<Asset> {
         },
         Asset {
             key: SUMMARY_MODEL,
-            label: "Model notulen (Qwen3 4B Instruct)",
+            label: ("Model notulen (Qwen3 4B Instruct)", "Minutes model (Qwen3 4B Instruct)"),
             base: Base::Models,
             folder: "llm",
             files: vec![hf(QWEN, QWEN_FILE, 2_497_281_120, "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597")],
@@ -154,7 +161,7 @@ pub fn assets() -> Vec<Asset> {
         // same ggml version, so its runtime borrows this build's Vulkan backend.
         Asset {
             key: LLAMA_RUNTIME,
-            label: "Mesin AI lokal (llama.cpp)",
+            label: ("Mesin AI lokal (llama.cpp)", "Local AI engine (llama.cpp)"),
             base: Base::Runtime,
             folder: "llama",
             files: vec![if windows {
@@ -170,7 +177,7 @@ pub fn assets() -> Vec<Asset> {
         },
         Asset {
             key: WHISPER_RUNTIME,
-            label: "Mesin transkripsi (whisper.cpp)",
+            label: ("Mesin transkripsi (whisper.cpp)", "Transcription engine (whisper.cpp)"),
             base: Base::Runtime,
             folder: "whisper",
             files: vec![if windows {
@@ -245,7 +252,7 @@ fn fetch(remote: &RemoteFile, target: &Path, done_before: u64, total: u64, progr
             let mut written = offset;
             loop {
                 if cancelled() {
-                    bail!("Unduhan dibatalkan.");
+                    bail!("{}", tr("Unduhan dibatalkan.", "Download cancelled."));
                 }
                 let n = reader.read(&mut buf)?;
                 if n == 0 {
@@ -259,7 +266,7 @@ fn fetch(remote: &RemoteFile, target: &Path, done_before: u64, total: u64, progr
     }
     if !remote.sha256.is_empty() && sha256_file(&partial)? != remote.sha256 {
         let _ = fs::remove_file(&partial);
-        bail!("{}: file rusak (hash tidak cocok). Coba unduh lagi.", remote.name);
+        bail!("{}: {}", remote.name, tr("file rusak (hash tidak cocok). Coba unduh lagi.", "file is damaged (hash mismatch). Try downloading again."));
     }
     fs::rename(&partial, target)?;
     Ok(())
@@ -355,7 +362,7 @@ pub fn install(asset: &Asset, paths: &Paths, progress: Progress, cancelled: &dyn
             }
         }
         if !asset.installed(paths) {
-            return Err(anyhow!("{}: unduhan selesai tapi {} tidak ditemukan.", asset.label, asset.marker));
+            return Err(anyhow!("{}: {} {}", asset.label(), tr("unduhan selesai tapi file ini tidak ditemukan:", "download finished but this file is missing:"), asset.marker));
         }
     }
     link_vulkan(paths)?;

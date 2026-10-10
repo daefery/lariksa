@@ -187,7 +187,7 @@ fn core_props(title: &str) -> String {
 
 /// Write the notulen (and transcript) as a Word document. Requires notulen.
 pub fn write_docx(meeting: &Meeting, target: &Path, date: &str) -> Result<()> {
-    let m = meeting.notulen.as_ref().ok_or_else(|| anyhow::anyhow!("Notulen belum tersedia."))?;
+    let m = meeting.notulen.as_ref().ok_or_else(|| anyhow::anyhow!("{}", crate::i18n::tr("Notulen belum tersedia.", "No minutes yet.")))?;
     let document = format!(
         "{}<w:body>{}{SECTION}</w:body></w:document>",
         include_str!("../assets/docx/document_head.xml"),

@@ -54,7 +54,8 @@
       compute: { label: "GPU (NVIDIA GeForce RTX 3050 Ti Laptop GPU)", device: "gpu", gpu: "NVIDIA GeForce RTX 3050 Ti Laptop GPU" },
       assets, needed: ["whisper-turbo", "vad", "llm", "llama", "whisper"], ready: scenario !== "setup",
       settings: { language: "id", notulen_language: "auto", whisper_model: "auto",
-        glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light" },
+        glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light",
+        ui_language: params.get("ui") === "en" ? "en" : "id", hotkey: "Ctrl+Shift+R", show_pill: true },
     };
   };
   // A full meeting payload (as returned by the real service) can be injected for previews.

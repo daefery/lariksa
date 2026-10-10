@@ -25,6 +25,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::process;
+use crate::i18n::tr;
 use crate::prompts::asr_base;
 use crate::transcript::Utterance;
 
@@ -236,10 +237,10 @@ pub struct Transcriber {
 impl Transcriber {
     pub fn new(options: TranscribeOptions) -> Result<Self> {
         if !options.cli.exists() {
-            bail!("Mesin transkripsi belum terpasang. Buka Pengaturan.");
+            bail!("{}", tr("Mesin transkripsi belum terpasang. Buka Pengaturan.", "The transcription engine is not installed. Open Settings."));
         }
         if !options.model.exists() {
-            bail!("Model transkripsi belum diunduh. Buka Pengaturan.");
+            bail!("{}", tr("Model transkripsi belum diunduh. Buka Pengaturan.", "The transcription model is not downloaded. Open Settings."));
         }
         Ok(Self { options })
     }
@@ -301,7 +302,7 @@ impl Transcriber {
 
         let mut cmd = process::command(&self.options.cli);
         cmd.arg(format!("@{}", native(&work.join("args.txt")))).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
-        let mut child = process::spawn(cmd).context("whisper-cli tidak bisa dijalankan")?;
+        let mut child = process::spawn(cmd).context(tr("whisper-cli tidak bisa dijalankan", "whisper-cli could not be started"))?;
 
         // whisper-cli prints "progress =  45%" to stderr; keep the last lines for errors.
         let progress = Arc::new(Mutex::new((0.0f64, Vec::<String>::new())));
@@ -326,7 +327,7 @@ impl Transcriber {
             if cancelled() {
                 process::stop(&mut child);
                 let _ = std::fs::remove_dir_all(&work);
-                bail!("Transkripsi dibatalkan.");
+                bail!("{}", tr("Transkripsi dibatalkan.", "Transcription cancelled."));
             }
             if let Some(status) = child.try_wait()? {
                 break status;
@@ -338,9 +339,9 @@ impl Transcriber {
         if !status.success() {
             let tail = progress.lock().unwrap().1.join("\n");
             let _ = std::fs::remove_dir_all(&work);
-            bail!("Transkripsi gagal ({status}).\n{tail}");
+            bail!("{} ({status}).\n{tail}", tr("Transkripsi gagal", "Transcription failed"));
         }
-        let json: Value = serde_json::from_slice(&std::fs::read(prefix.with_extension("json")).map_err(|e| anyhow!("Hasil transkripsi tidak ada: {e}"))?)?;
+        let json: Value = serde_json::from_slice(&std::fs::read(prefix.with_extension("json")).map_err(|e| anyhow!("{}: {e}", tr("Hasil transkripsi tidak ada", "No transcription output")))?)?;
         let _ = std::fs::remove_dir_all(&work);
         on_progress(1.0);
 

@@ -29,6 +29,9 @@ SCENES = {
     "processing": ("s=processing&open=processing", 780),
     "setup": ("s=setup", 780),
     "settings": ("s=home&open=settings", 780),
+    "settings-en": ("s=home&open=settings&ui=en", 780),
+    "home-en": ("s=home&ui=en", 780),
+    "meeting-en": ("s=home&open=card&ui=en", 780),
     "dark": ("s=home&open=card&theme=dark", 780),
 }
 

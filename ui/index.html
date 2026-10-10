@@ -14,15 +14,15 @@
       <span>lariksa.</span>
     </div>
     <nav>
-      <button class="nav active" data-view="home">⌂&nbsp;&nbsp;Beranda</button>
-      <button class="nav" data-view="settings">⚙&nbsp;&nbsp;Pengaturan</button>
+      <button class="nav active" data-view="home">⌂&nbsp;&nbsp;<span data-i18n="nav.home">Beranda</span></button>
+      <button class="nav" data-view="settings">⚙&nbsp;&nbsp;<span data-i18n="nav.settings">Pengaturan</span></button>
     </nav>
-    <div class="section">RAPAT</div>
+    <div class="section" data-i18n="nav.meetings">RAPAT</div>
     <label class="search">
       <span aria-hidden="true">⌕</span>
-      <input id="search" type="search" placeholder="Cari catatanmu" autocomplete="off">
+      <input id="search" type="search" placeholder="Cari catatanmu" data-i18n-placeholder="search.placeholder" autocomplete="off">
     </label>
-    <ul id="meeting-list" class="meeting-list" aria-label="Daftar rapat"></ul>
+    <ul id="meeting-list" class="meeting-list" aria-label="Daftar rapat" data-i18n-aria="search.aria"></ul>
     <div class="engine" id="engine-label"></div>
   </aside>
 
@@ -31,14 +31,14 @@
     <section id="view-home" class="view">
       <div class="toolbar">
         <div class="eyebrow" id="greeting-eyebrow">LARIKSA</div>
-        <button class="ghost" id="theme" aria-label="Ganti tema">◐ Tema</button>
+        <button class="ghost" id="theme" aria-label="Ganti tema" data-i18n-aria="theme.aria">◐ <span data-i18n="theme">Tema</span></button>
       </div>
       <h1 id="greeting">Selamat datang.</h1>
-      <p class="lede">Notulen rapi pas rapat selesai. Tanpa bot, tanpa langganan, semuanya di laptopmu.</p>
+      <p class="lede" data-i18n="home.lede">Notulen rapi pas rapat selesai. Tanpa bot, tanpa langganan, semuanya di laptopmu.</p>
 
       <div id="setup-card" class="setup hidden">
-        <strong>Siapkan Lariksa sekali saja</strong>
-        <p>Model AI diunduh ke folder Lariksa dan berjalan offline setelahnya.</p>
+        <strong data-i18n="setup.title">Siapkan Lariksa sekali saja</strong>
+        <p data-i18n="setup.body">Model AI diunduh ke folder Lariksa dan berjalan offline setelahnya.</p>
         <ul id="setup-list"></ul>
         <button id="setup-go">Unduh semua</button>
       </div>
@@ -48,12 +48,12 @@
           <strong id="record-title">Mulai rapat</strong>
           <small id="record-sub">Rekam suaramu dan suara peserta dari Meet, Zoom, atau Teams.</small>
           <small class="kbd-hint hidden" id="kbd-hint"></small>
-          <input id="meeting-title" class="title-input" placeholder="Judul rapat (opsional)" maxlength="120">
+          <input id="meeting-title" class="title-input" placeholder="Judul rapat (opsional)" data-i18n-placeholder="record.title.placeholder" maxlength="120">
         </div>
         <div class="record-actions">
           <div class="meters hidden" id="meters">
-            <div class="meter"><span>Saya</span><i><b id="lvl-mic"></b></i></div>
-            <div class="meter"><span>Peserta</span><i><b id="lvl-system"></b></i></div>
+            <div class="meter"><span data-i18n="meter.me">Saya</span><i><b id="lvl-mic"></b></i></div>
+            <div class="meter"><span data-i18n="meter.others">Peserta</span><i><b id="lvl-system"></b></i></div>
           </div>
           <button id="record" class="record-btn"><span class="dot"></span><span id="record-label">Rekam</span></button>
         </div>
@@ -61,8 +61,8 @@
       <p class="consent" id="consent">Beri tahu peserta bahwa rapat ini direkam.</p>
 
       <div class="row-between">
-        <div class="eyebrow">RAPAT TERBARU</div>
-        <button class="link" id="import">+ Impor rekaman atau transkrip</button>
+        <div class="eyebrow" data-i18n="recent">RAPAT TERBARU</div>
+        <button class="link" id="import" data-i18n="import">+ Impor rekaman atau transkrip</button>
       </div>
       <div class="cards" id="cards"></div>
     </section>
@@ -70,26 +70,26 @@
     <!-- MEETING -->
     <section id="view-meeting" class="view view-wide hidden">
       <div class="toolbar">
-        <button class="link" id="back">← Kembali</button>
+        <button class="link" id="back" data-i18n="back">← Kembali</button>
         <div class="actions">
-          <button class="ghost" id="copy-wa">Salin untuk WhatsApp</button>
+          <button class="ghost" id="copy-wa" data-i18n="copy.wa">Salin untuk WhatsApp</button>
           <button class="ghost" id="export-docx">DOCX</button>
           <button class="ghost" id="export-md">Markdown</button>
-          <button class="ghost" id="regen" title="Tulis ulang notulen dari transkrip">↻ Notulen</button>
-          <button class="ghost danger" id="delete">Hapus</button>
+          <button class="ghost" id="regen" title="Tulis ulang notulen dari transkrip" data-i18n="regen" data-i18n-title="regen.title">↻ Notulen</button>
+          <button class="ghost danger" id="delete" data-i18n="delete">Hapus</button>
         </div>
       </div>
-      <input id="m-title" class="h1-input" aria-label="Judul rapat">
+      <input id="m-title" class="h1-input" aria-label="Judul rapat" data-i18n-aria="meeting.title.aria">
       <div class="meta" id="m-meta"></div>
       <div id="m-progress" class="progress hidden"><div class="bar"><b></b></div><span></span></div>
       <div id="m-error" class="error hidden"></div>
 
       <div class="tabs-row">
         <div class="tabs" role="tablist">
-          <button class="tab active" data-tab="notulen" role="tab">Notulen</button>
-          <button class="tab" data-tab="transcript" role="tab">Transkrip</button>
+          <button class="tab active" data-tab="notulen" role="tab" data-i18n="tab.notulen">Notulen</button>
+          <button class="tab" data-tab="transcript" role="tab" data-i18n="tab.transcript">Transkrip</button>
         </div>
-        <label class="find"><span aria-hidden="true">⌕</span><input id="m-find" type="search" placeholder="Cari di rapat ini" autocomplete="off"></label>
+        <label class="find"><span aria-hidden="true">⌕</span><input id="m-find" type="search" placeholder="Cari di rapat ini" data-i18n-placeholder="find.placeholder" autocomplete="off"></label>
       </div>
 
       <div class="meeting-grid">
@@ -99,7 +99,7 @@
         </div>
         <aside class="meeting-side" id="m-side">
           <div class="player hidden" id="player">
-            <button class="play" id="play" aria-label="Putar">▶</button>
+            <button class="play" id="play" aria-label="Putar" data-i18n-aria="play.aria">▶</button>
             <div class="track">
               <div class="scrub" id="scrub"><b id="scrub-fill"></b><div id="scrub-marks"></div></div>
               <div class="times"><span id="t-now">00:00</span><span id="t-total">00:00</span></div>
@@ -114,51 +114,59 @@
 
     <!-- SETTINGS -->
     <section id="view-settings" class="view hidden">
-      <div class="eyebrow">PENGATURAN</div>
-      <h1>Pengaturan</h1>
+      <div class="eyebrow" data-i18n="settings.eyebrow">PENGATURAN</div>
+      <h1 data-i18n="settings.title">Pengaturan</h1>
       <div class="card form">
-        <label>Bahasa yang diucapkan di rapat
-          <select id="s-language">
-            <option value="id">Bahasa Indonesia (campur Inggris)</option>
+        <label><span data-i18n="s.ui.label">Bahasa tampilan</span>
+          <select id="s-ui-language">
+            <option value="id">Bahasa Indonesia</option>
             <option value="en">English</option>
-            <option value="">Deteksi otomatis</option>
           </select>
-          <small>Membantu transkripsi. Kalimat bahasa Inggris tetap ditulis dalam bahasa Inggris.</small>
+          <small data-i18n="s.ui.note">Bahasa menu, tombol, dan pesan di aplikasi.</small>
         </label>
-        <label>Bahasa notulen
+        <label><span data-i18n="s.lang.label">Bahasa yang diucapkan di rapat</span>
+          <select id="s-language">
+            <option value="id" data-i18n="s.lang.id">Bahasa Indonesia (campur Inggris)</option>
+            <option value="en" data-i18n="s.lang.en">English</option>
+            <option value="" data-i18n="s.lang.auto">Deteksi otomatis</option>
+          </select>
+          <small data-i18n="s.lang.note">Membantu transkripsi. Kalimat bahasa Inggris tetap ditulis dalam bahasa Inggris.</small>
+        </label>
+        <label><span data-i18n="s.notulen.label">Bahasa notulen</span>
           <select id="s-notulen-language">
-            <option value="auto">Ikuti bahasa rapat</option>
-            <option value="id">Selalu Bahasa Indonesia</option>
-            <option value="en">Always English</option>
+            <option value="auto" data-i18n="s.notulen.auto">Ikuti bahasa rapat</option>
+            <option value="id" data-i18n="s.notulen.id">Selalu Bahasa Indonesia</option>
+            <option value="en" data-i18n="s.notulen.en">Selalu Bahasa Inggris</option>
           </select>
-          <small>"Ikuti bahasa rapat": rapat berbahasa Inggris menghasilkan notulen berbahasa Inggris.</small>
+          <small data-i18n="s.notulen.note">"Ikuti bahasa rapat": rapat berbahasa Inggris menghasilkan notulen berbahasa Inggris.</small>
         </label>
-        <label>Model transkripsi
+        <label><span data-i18n="s.whisper.label">Model transkripsi</span>
           <select id="s-whisper">
-            <option value="auto">Otomatis (paling akurat)</option>
+            <option value="auto" data-i18n="s.whisper.auto">Otomatis (paling akurat)</option>
             <option value="whisper-turbo">Whisper large-v3-turbo</option>
-            <option value="whisper-small">Whisper small (lebih ringan)</option>
+            <option value="whisper-small" data-i18n="s.whisper.small">Whisper small (lebih ringan)</option>
           </select>
         </label>
-        <label>Glosarium: nama orang, produk, istilah
+        <label><span data-i18n="s.glossary.label">Glosarium: nama orang, produk, istilah</span>
           <textarea id="s-glossary" rows="4" placeholder="Sari, Budi, OKR, sprint review, Solve Education"></textarea>
-          <small>Dipakai untuk membantu AI mengeja nama dan istilah dengan benar.</small>
+          <small data-i18n="s.glossary.note">Dipakai untuk membantu AI mengeja nama dan istilah dengan benar.</small>
         </label>
-        <label>Pintasan rekam / selesai (berfungsi di aplikasi mana pun)
+        <label><span data-i18n="s.hotkey.label">Pintasan rekam / selesai (berfungsi di aplikasi mana pun)</span>
           <input id="s-hotkey" placeholder="Ctrl+Shift+R" maxlength="40" autocomplete="off">
           <small id="s-hotkey-note">Tekan saat Zoom atau Meet terbuka untuk mulai atau selesai merekam. Kosongkan untuk mematikan.</small>
         </label>
-        <label class="check"><input type="checkbox" id="s-pill"> Tampilkan indikator mengambang saat merekam dan memproses</label>
-        <button id="s-save">Simpan</button>
-        <span class="saved hidden" id="s-saved">Semua perubahan tersimpan</span>
+        <label class="check"><input type="checkbox" id="s-pill"> <span data-i18n="s.pill">Tampilkan indikator mengambang saat merekam dan memproses</span></label>
+        <button id="s-save" data-i18n="s.save">Simpan</button>
+        <span class="saved hidden" id="s-saved" data-i18n="s.saved">Semua perubahan tersimpan</span>
       </div>
-      <div class="eyebrow mt">MODEL & MESIN</div>
+      <div class="eyebrow mt" data-i18n="s.models">MODEL & MESIN</div>
       <div class="card" id="assets"></div>
-      <p class="fine">Semua audio, transkrip, dan notulen disimpan di folder <code>data</code> di samping aplikasi.</p>
+      <p class="fine" data-i18n="s.fine">Semua audio, transkrip, dan notulen disimpan di folder data di samping aplikasi.</p>
     </section>
   </main>
 </div>
 <div id="toast" class="toast hidden" role="status"></div>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

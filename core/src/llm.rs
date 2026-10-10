@@ -13,6 +13,7 @@ use std::process::{Child, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::hardware::Device;
+use crate::i18n::tr;
 use crate::process;
 use crate::prompts::Schema;
 use crate::text::token_urlsafe;
@@ -43,10 +44,10 @@ pub struct LocalLlm {
 impl LocalLlm {
     pub fn start(server: &Path, model: &Path, device: Option<&Device>) -> Result<LocalLlm> {
         if !server.exists() {
-            bail!("Mesin AI lokal belum terpasang.");
+            bail!("{}", tr("Mesin AI lokal belum terpasang.", "The local AI engine is not installed."));
         }
         if !model.exists() {
-            bail!("Model notulen belum diunduh.");
+            bail!("{}", tr("Model notulen belum diunduh.", "The minutes model is not downloaded."));
         }
         let port = free_port()?;
         let key = token_urlsafe(24);
@@ -77,14 +78,14 @@ impl LocalLlm {
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(2)).build();
         while Instant::now() < deadline {
             if let Ok(Some(_)) = self.child.try_wait() {
-                bail!("Mesin AI berhenti saat mulai. Lihat {}:\n{}", self.log.display(), self.tail(15));
+                bail!("{} {}:\n{}", tr("Mesin AI berhenti saat mulai. Lihat", "The AI engine stopped while starting. See"), self.log.display(), self.tail(15));
             }
             if agent.get(&url).call().is_ok_and(|r| r.status() == 200) {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(500));
         }
-        bail!("Mesin AI tidak siap dalam waktu yang wajar.")
+        bail!("{}", tr("Mesin AI tidak siap dalam waktu yang wajar.", "The AI engine did not start in time."))
     }
 
     fn tail(&self, lines: usize) -> String {
@@ -119,9 +120,9 @@ impl LocalLlm {
                 Ok(r) => r.into_json()?,
                 Err(ureq::Error::Status(code, r)) => {
                     let text: String = r.into_string().unwrap_or_default().chars().take(300).collect();
-                    bail!("Mesin AI error {code}: {text}")
+                    bail!("{} {code}: {text}", tr("Mesin AI error", "AI engine error"))
                 }
-                Err(e) => bail!("Mesin AI tidak merespons: {e}"),
+                Err(e) => bail!("{}: {e}", tr("Mesin AI tidak merespons", "The AI engine is not responding")),
             };
             let choice = &body["choices"][0];
             let content = choice["message"]["content"].as_str().unwrap_or("");
@@ -130,7 +131,7 @@ impl LocalLlm {
                 Err(_) => log::warn!("Model JSON invalid (finish_reason={}, attempt {})", choice["finish_reason"], attempt + 1),
             }
         }
-        Err(anyhow!("Model mengembalikan JSON yang tidak valid."))
+        Err(anyhow!("{}", tr("Model mengembalikan JSON yang tidak valid.", "The model returned invalid JSON.")))
     }
 }
 

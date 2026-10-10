@@ -90,7 +90,7 @@ pub fn process(
         if utterances.is_empty() {
             store.update(meeting_id, Update {
                 status: Some(FAILED.into()),
-                error: Some("Tidak ada suara yang terdeteksi. Cek mikrofon dan audio rapat.".into()),
+                error: Some(crate::i18n::tr("Tidak ada suara yang terdeteksi. Cek mikrofon dan audio rapat.", "No speech detected. Check the microphone and meeting audio.").into()),
                 ..Default::default()
             })?;
             return Ok(());
@@ -296,6 +296,7 @@ pub mod tests {
 
     #[test]
     fn silent_meeting_fails_with_a_clear_message() {
+        let _language = crate::i18n::test_lock();
         let (_d, store, folder) = setup();
         let m = store.create("", "record", "id", "recording", None).unwrap();
         run(&store, &m.id, &folder, &Fakes::default(), &job("auto"));

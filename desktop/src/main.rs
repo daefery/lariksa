@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use tauri::{Manager, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 
 use lariksa_core::hotkey::GlobalHotkey;
+use lariksa_core::i18n::tr;
 use lariksa_core::overlay::{self, Inputs, Overlay, Taskbar, Toggle, PILL_SIZE};
 use lariksa_core::paths::Paths;
 use lariksa_core::service::{import_types, LariksaService};
@@ -101,7 +102,7 @@ fn download(app: S, keys: Vec<String>) -> Value {
 #[tauri::command]
 async fn import_audio(app: S<'_>, window: WebviewWindow) -> Result<Value, ()> {
     let exts: Vec<&str> = import_types().iter().map(|e| e.trim_start_matches('.')).collect();
-    let picked = rfd::FileDialog::new().set_parent(&window).add_filter("Rekaman atau transkrip", &exts).pick_file();
+    let picked = rfd::FileDialog::new().set_parent(&window).add_filter(tr("Rekaman atau transkrip", "Recording or transcript"), &exts).pick_file();
     Ok(match picked {
         Some(path) => app.svc.import_file(&path, ""),
         None => json!({"ok": false, "error": ""}),
@@ -118,7 +119,7 @@ fn safe_filename(title: &str) -> String {
 #[tauri::command]
 async fn export(app: S<'_>, window: WebviewWindow, meeting_id: String, kind: String) -> Result<Value, ()> {
     let Some(m) = app.svc.store.get(&meeting_id) else {
-        return Ok(json!({"ok": false, "error": "Rapat tidak ditemukan."}));
+        return Ok(json!({"ok": false, "error": tr("Rapat tidak ditemukan.", "Meeting not found.")}));
     };
     let (ext, filter) = if kind == "docx" { ("docx", "Word") } else { ("md", "Markdown") };
     let date = parse_iso(&m.created_at).map(|t| t.format("%Y-%m-%d").to_string()).unwrap_or_default();
@@ -364,7 +365,7 @@ mod clipboard {
                 std::thread::sleep(std::time::Duration::from_millis(30)); // another app holds it
             }
             if !opened {
-                return Err("Clipboard sedang dipakai aplikasi lain.".into());
+                return Err(lariksa_core::i18n::tr("Clipboard sedang dipakai aplikasi lain.", "The clipboard is in use by another app.").into());
             }
             let result = (|| -> Result<(), String> {
                 EmptyClipboard().map_err(|e| e.to_string())?;
@@ -372,7 +373,7 @@ mod clipboard {
                 let ptr = GlobalLock(mem) as *mut u16;
                 if ptr.is_null() {
                     let _ = GlobalFree(Some(mem));
-                    return Err("Clipboard: memori tidak tersedia.".into());
+                    return Err(lariksa_core::i18n::tr("Clipboard: memori tidak tersedia.", "Clipboard: out of memory.").into());
                 }
                 std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr, wide.len());
                 let _ = GlobalUnlock(mem);
@@ -390,7 +391,7 @@ mod clipboard {
 
     #[cfg(not(windows))]
     pub fn set(_: &str, _: Option<isize>) -> Result<(), String> {
-        Err("Clipboard hanya di Windows.".into())
+        Err(lariksa_core::i18n::tr("Clipboard hanya di Windows.", "Clipboard is only available on Windows.").into())
     }
 }
 

@@ -7,6 +7,7 @@
 //! rather than silently doing nothing.
 
 use std::sync::Arc;
+use crate::i18n::tr;
 
 pub const MOD_ALT: u32 = 0x1;
 pub const MOD_CONTROL: u32 = 0x2;
@@ -34,7 +35,7 @@ pub fn parse(combo: &str) -> Result<(u32, u32), String> {
     let compact = combo.replace(' ', "");
     let parts: Vec<&str> = compact.split('+').map(str::trim).filter(|p| !p.is_empty()).collect();
     if parts.len() < 2 {
-        return Err("Pintasan butuh minimal satu tombol pengubah dan satu tombol, misal Ctrl+Shift+R.".into());
+        return Err(tr("Pintasan butuh minimal satu tombol pengubah dan satu tombol, misal Ctrl+Shift+R.", "A shortcut needs at least one modifier and one key, e.g. Ctrl+Shift+R.").into());
     }
     let mut mods = 0;
     for p in &parts[..parts.len() - 1] {
@@ -43,13 +44,13 @@ pub fn parse(combo: &str) -> Result<(u32, u32), String> {
             "alt" => MOD_ALT,
             "shift" => MOD_SHIFT,
             "win" => MOD_WIN,
-            _ => return Err(format!("Tombol pengubah tidak dikenal: {p}")),
+            _ => return Err(format!("{}: {p}", tr("Tombol pengubah tidak dikenal", "Unknown modifier key"))),
         };
     }
     let last = parts[parts.len() - 1];
-    let key = key_code(last).ok_or_else(|| format!("Tombol tidak dikenal: {last}"))?;
+    let key = key_code(last).ok_or_else(|| format!("{}: {last}", tr("Tombol tidak dikenal", "Unknown key")))?;
     if mods & (MOD_CONTROL | MOD_ALT | MOD_WIN) == 0 {
-        return Err("Pakai Ctrl, Alt, atau Win agar tidak bentrok dengan mengetik.".into());
+        return Err(tr("Pakai Ctrl, Alt, atau Win agar tidak bentrok dengan mengetik.", "Use Ctrl, Alt or Win so it does not clash with typing.").into());
     }
     Ok((mods, key))
 }
@@ -77,7 +78,7 @@ impl GlobalHotkey {
 mod imp {
     use super::*;
     pub fn start(_: &str, _: u32, _: u32, _: Callback) -> Result<GlobalHotkey, String> {
-        Err("Pintasan global hanya tersedia di Windows.".into())
+        Err(tr("Pintasan global hanya tersedia di Windows.", "Global shortcuts are only available on Windows.").into())
     }
 }
 
@@ -100,7 +101,7 @@ mod imp {
             .spawn(move || unsafe {
                 let tid = GetCurrentThreadId();
                 if RegisterHotKey(None, 1, HOT_KEY_MODIFIERS(mods) | MOD_NOREPEAT, vk).is_err() {
-                    let _ = tx.send(Err(format!("{label} sudah dipakai aplikasi lain. Pilih pintasan lain di Pengaturan.")));
+                    let _ = tx.send(Err(format!("{label} {}", tr("sudah dipakai aplikasi lain. Pilih pintasan lain di Pengaturan.", "is already used by another app. Choose another shortcut in Settings."))));
                     return;
                 }
                 log::info!("Global hotkey {label} registered");
@@ -127,7 +128,7 @@ mod imp {
         match rx.recv_timeout(std::time::Duration::from_secs(3)) {
             Ok(Ok(thread_id)) => Ok(GlobalHotkey { combo: combo.to_string(), thread_id, thread: Some(thread) }),
             Ok(Err(e)) => Err(e),
-            Err(_) => Err("Pintasan tidak bisa didaftarkan.".into()),
+            Err(_) => Err(tr("Pintasan tidak bisa didaftarkan.", "The shortcut could not be registered.").into()),
         }
     }
 
