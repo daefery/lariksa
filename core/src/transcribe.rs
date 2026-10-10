@@ -60,6 +60,11 @@ pub fn arguments(o: &TranscribeOptions, audio: &Path, out_prefix: &Path, threads
         "--prompt".into(), build_prompt(&o.language, &o.glossary),
         "-oj".into(), "-of".into(), native(out_prefix),
         "-np".into(), "-pp".into(),
+        // No text carried from one 30-second window to the next. With it, a faint
+        // mic track can lock into one phrase for minutes ("Siapa yang ngajakin
+        // tulip di mana" x38 on a real meeting); without it the same meeting
+        // matched the earlier engine's transcript better (0.83 vs 0.64).
+        "-mc".into(), "0".into(),
     ];
     if o.vad.exists() {
         // Settings that matched the previous engine's wording best on a real meeting.
@@ -122,10 +127,86 @@ pub fn parse_output(json: &Value) -> Vec<Segment> {
         .unwrap_or_default()
 }
 
-/// Whisper's classic failure on silence: the prompt or a sign-off read back as speech.
+/// Sign-offs Whisper learned from subtitled videos and "hears" in faint or empty audio.
+static FILLER: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(concat!(
+        r"(?i)terima kasih (telah|sudah|udah) menonton|thanks? (you )?for watching|jangan lupa (like|subscribe)",
+        r"|\bbersambung\b|sampai jumpa di (video|episode)|subtitle (oleh|by)"
+    ))
+    .unwrap()
+});
+
+fn words(text: &str) -> Vec<String> {
+    text.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect()
+}
+
+/// "nge-nge-nge-nge…" or "Kita bahas. Kita bahas. Kita bahas…": one short phrase
+/// repeated back to back makes up most of the segment.
+fn is_loop(text: &str) -> bool {
+    let w = words(text);
+    if w.len() < 6 {
+        return false;
+    }
+    (1..=3).any(|n| {
+        let mut best = 1;
+        for start in 0..n {
+            let mut run = 1;
+            let mut i = start;
+            while i + 2 * n <= w.len() {
+                if w[i..i + n] == w[i + n..i + 2 * n] {
+                    run += 1;
+                    best = best.max(run);
+                } else {
+                    run = 1;
+                }
+                i += n;
+            }
+        }
+        best >= 4 && best * n * 10 >= w.len() * 6
+    })
+}
+
+/// Whisper's failures on silence and on faint bleed from the speakers: the prompt
+/// read back, a video sign-off, a phrase stuck in a loop.
 fn is_hallucination(text: &str, prompt: &str) -> bool {
     let t = text.trim().trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase();
-    t.is_empty() || (t.len() > 20 && prompt.to_lowercase().contains(&t))
+    t.is_empty() || (t.len() > 20 && prompt.to_lowercase().contains(&t)) || FILLER.is_match(&t) || is_loop(&t)
+}
+
+/// A phrase "spoken" this slowly is not speech: people say about 2-3 words a second.
+const MAX_SECONDS_PER_WORD: f64 = 5.0;
+/// The same sentence of four words or more, back to back this many times, is a
+/// decoding loop however fast it comes ("Aku tidak menghubungi kemurusahaan." x12).
+const MAX_SENTENCE_REPEATS: usize = 6;
+
+/// Drop hallucinated segments, including one phrase repeated three times or more
+/// in a row while stretched over far more time than it takes to say ("Terima
+/// kasih." x7 across ten minutes of someone else talking). People repeating
+/// themselves quickly ("Belum ada, belum ada, belum ada") are kept.
+pub fn drop_hallucinations(segments: Vec<Segment>, prompt: &str) -> Vec<Segment> {
+    let keys: Vec<Vec<String>> = segments.iter().map(|s| words(&s.text)).collect();
+    let mut repeated = vec![false; segments.len()];
+    let mut i = 0;
+    while i < keys.len() {
+        let mut j = i + 1;
+        while j < keys.len() && keys[j] == keys[i] {
+            j += 1;
+        }
+        let spoken_words = (keys[i].len() * (j - i)) as f64;
+        let seconds = segments[j - 1].end - segments[i].start;
+        let stretched = j - i >= 3 && seconds > spoken_words * MAX_SECONDS_PER_WORD;
+        let looping = j - i >= MAX_SENTENCE_REPEATS && keys[i].len() >= 4;
+        if stretched || looping {
+            repeated[i..j].iter_mut().for_each(|r| *r = true);
+        }
+        i = j;
+    }
+    segments
+        .into_iter()
+        .zip(repeated)
+        .filter(|(s, rep)| !rep && !is_hallucination(&s.text, prompt))
+        .map(|(s, _)| s)
+        .collect()
 }
 
 /// Join short pieces into utterances: same speaker, under a second apart, up to
@@ -163,6 +244,33 @@ impl Transcriber {
         Ok(Self { options })
     }
 
+    /// "Deteksi otomatis": find the language from speech only. whisper-cli guesses
+    /// from the first 30 seconds, which on a mic track are often near-silent; on a
+    /// real Indonesian meeting that guess was Spanish (p=0.87) without speech
+    /// detection and Indonesian (p=0.998) with it. Falls back to Indonesian.
+    fn detect_language(&self, audio: &Path, work: &Path, threads: usize) -> String {
+        let mut args: Vec<String> = vec!["-m".into(), native(&self.options.model), "-f".into(), native(audio), "-l".into(), "auto".into(),
+                                         "-dl".into(), "-oj".into(), "-np".into(), "-t".into(), threads.to_string(),
+                                         "-of".into(), native(&work.join("lang"))];
+        if self.options.vad.exists() {
+            args.extend(["--vad".into(), "-vm".into(), native(&self.options.vad)]);
+        }
+        match self.options.gpu {
+            Some(i) => args.extend(["-dev".into(), i.to_string()]),
+            None => args.push("-ng".into()),
+        }
+        let file = work.join("lang-args.txt");
+        let detected = std::fs::write(&file, args.join("\n"))
+            .ok()
+            .and_then(|_| process::output_within(&self.options.cli, &[&format!("@{}", native(&file))], Duration::from_secs(120)).ok())
+            .and_then(|_| std::fs::read(work.join("lang.json")).ok())
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .and_then(|j| j["result"]["language"].as_str().map(String::from))
+            .filter(|l| !l.is_empty());
+        log::info!("Detected language of {}: {}", audio.display(), detected.as_deref().unwrap_or("none, using id"));
+        detected.unwrap_or_else(|| "id".into())
+    }
+
     pub fn transcribe(
         &self,
         audio: &Path,
@@ -184,7 +292,11 @@ impl Transcriber {
             decoded.as_path()
         };
         let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).clamp(2, 8);
-        let args = arguments(&self.options, audio, &prefix, threads);
+        let mut options = self.options.clone();
+        if options.language.is_empty() {
+            options.language = self.detect_language(audio, &work, threads);
+        }
+        let args = arguments(&options, audio, &prefix, threads);
         std::fs::write(work.join("args.txt"), args.join("\n"))?;
 
         let mut cmd = process::command(&self.options.cli);
@@ -233,7 +345,7 @@ impl Transcriber {
         on_progress(1.0);
 
         let prompt = build_prompt(&self.options.language, &self.options.glossary);
-        let segments: Vec<Segment> = parse_output(&json).into_iter().filter(|s| !is_hallucination(&s.text, &prompt)).collect();
+        let segments = drop_hallucinations(parse_output(&json), &prompt);
         let utterances: Vec<Utterance> =
             merge_segments(&segments, 1.0, 300).into_iter().map(|s| Utterance::new(speaker, s.start, s.end, &s.text)).collect();
         log::info!("{speaker}: {} utterances from {}", utterances.len(), audio.display());
@@ -265,7 +377,7 @@ mod tests {
         let o = TranscribeOptions { cli: "w".into(), model: "m.bin".into(), vad, gpu: Some(1), language: "id".into(), glossary: vec![] };
         let a = arguments(&o, Path::new("mic.wav"), Path::new("out"), 8);
         let s = a.join(" ");
-        assert!(s.contains("-l id") && s.contains("-dev 1") && s.contains("--vad") && s.contains("-vsd 500") && s.contains("-oj"));
+        assert!(s.contains("-l id") && s.contains("-dev 1") && s.contains("--vad") && s.contains("-vsd 500") && s.contains("-oj") && s.contains("-mc 0"));
         let cpu = TranscribeOptions { gpu: None, language: "".into(), vad: "missing".into(), ..o };
         let s = arguments(&cpu, Path::new("mic.wav"), Path::new("out"), 8).join(" ");
         assert!(s.contains("-ng") && s.contains("-l auto") && !s.contains("--vad"));
@@ -303,5 +415,43 @@ mod tests {
         assert!(is_hallucination("Rapat kerja tim. Kita bahas progress, deadline, budget", &p));
         assert!(is_hallucination(" ... ", &p));
         assert!(!is_hallucination("Kita bahas progress", &p)); // short real speech that overlaps the prompt stays
+    }
+
+    // Seen on a laptop mic picking up the meeting from the speakers (10 Oct 2026).
+    #[test]
+    fn bleed_hallucinations_are_dropped() {
+        let p = build_prompt("id", &[]);
+        for junk in [
+            "Jadi, tadi saya mau nge-nge-nge-nge-nge-nge-nge-nge-nge-nge-nge-nge-nge-nge.",
+            "Terima kasih. Terima kasih. Terima kasih. Terima kasih. Terima kasih. Terima kasih.",
+            "Kita bahas. Kita bahas. Kita bahas. Kita bahas. Kita bahas.",
+            "Terima kasih telah menonton!",
+            "Bersambung, ya. Bersambung.",
+        ] {
+            assert!(is_hallucination(junk, &p), "{junk}");
+        }
+        for real in [
+            "Ya. Ya. Mas Rijal. Ya. Oke. Oke. Oke. Oke. Itu aja dari saya. Oke. Itu aja kali dari saya, next.",
+            "Kenapa? Banyak banget. Kenapa tuh. Jadi. Banyak banget itu. Banyak banget. Iya.",
+            "Dari saya sih clear sih Bu. Terima kasih banyak Bu.",
+            "unsubscribe nya aku udah tes di staging juga",
+            "Oke, oke. Bisa, bisa, bisa. Oke, itu aja.",
+        ] {
+            assert!(!is_hallucination(real, &p), "{real}");
+        }
+    }
+
+    #[test]
+    fn repeated_segments_are_dropped_but_short_acknowledgements_stay() {
+        let p = build_prompt("id", &[]);
+        let mut segs = vec![seg(0.0, 3.0, "Ya, cipta-cipta")];
+        segs.extend((0..7).map(|i| seg(50.0 + i as f64 * 80.0, 100.0 + i as f64 * 80.0, "Terima kasih.")));
+        segs.extend([seg(700.0, 701.0, "Ya"), seg(701.0, 702.0, "Ya"), seg(702.0, 703.0, "Ya"), seg(704.0, 706.0, "Terima kasih.")]);
+        // A sentence looping quickly is dropped too.
+        segs.extend((0..12).map(|i| seg(65.0 + i as f64 * 3.0, 67.0 + i as f64 * 3.0, "Aku tidak menghubungi kemurusahaan.")));
+        // Real, quick repetition (seen in the Daily Standup): kept.
+        segs.extend([seg(374.0, 376.0, "jawab aja dong Ferry"), seg(376.0, 377.0, "jawab aja dong Ferry"), seg(377.0, 378.0, "jawab aja dong Ferry")]);
+        let kept: Vec<String> = drop_hallucinations(segs, &p).into_iter().map(|s| s.text).collect();
+        assert_eq!(kept, ["Ya, cipta-cipta", "Ya", "Ya", "Ya", "Terima kasih.", "jawab aja dong Ferry", "jawab aja dong Ferry", "jawab aja dong Ferry"]);
     }
 }
