@@ -259,7 +259,25 @@ pub fn mix_tracks(tracks: &[std::path::PathBuf], target: &Path) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 /// Decode any supported audio/video file to 16 kHz mono WAV for Whisper.
+///
+/// The pure-Rust decoders cover MP3, AAC, ALAC, FLAC, Vorbis, Opus and PCM in
+/// MP4/M4A, MKV/WebM, OGG, WAV, AIFF and CAF. Anything else (AC-3, WMA, ...)
+/// falls back to Windows' own Media Foundation decoders, as broad as the
+/// FFmpeg the earlier version used for typical meeting recordings.
 pub fn decode_to_wav(source: &Path, target: &Path) -> Result<f64> {
+    match decode_symphonia(source, target) {
+        Ok(secs) => Ok(secs),
+        #[cfg(windows)]
+        Err(first) => media_foundation::decode(source, target).map_err(|e| {
+            log::warn!("Decoding {} failed: {first:#}; Media Foundation: {e:#}", source.display());
+            first
+        }),
+        #[cfg(not(windows))]
+        Err(e) => Err(e),
+    }
+}
+
+fn decode_symphonia(source: &Path, target: &Path) -> Result<f64> {
     use symphonia::core::codecs::audio::AudioDecoderOptions;
     use symphonia::core::codecs::registry::CodecRegistry;
     use symphonia::core::errors::Error;
@@ -335,6 +353,77 @@ pub fn decode_to_wav(source: &Path, target: &Path) -> Result<f64> {
         bail!("File tidak berisi audio yang bisa dibaca.");
     }
     Ok(frames as f64 / TARGET_RATE as f64)
+}
+
+#[cfg(windows)]
+mod media_foundation {
+    use super::*;
+    use windows::Win32::Media::MediaFoundation::*;
+    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+
+    /// Windows' decoders, asked for 32-bit float PCM at the source rate.
+    pub fn decode(source: &Path, target: &Path) -> Result<f64> {
+        unsafe {
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+            MFStartup(MF_VERSION, MFSTARTUP_FULL)?;
+            let result = run(source, target);
+            let _ = MFShutdown();
+            result
+        }
+    }
+
+    unsafe fn run(source: &Path, target: &Path) -> Result<f64> {
+        let url: Vec<u16> = source.to_string_lossy().encode_utf16().chain([0]).collect();
+        let reader = MFCreateSourceReaderFromURL(windows::core::PCWSTR(url.as_ptr()), None)?;
+        let audio = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
+        reader.SetStreamSelection(MF_SOURCE_READER_ALL_STREAMS.0 as u32, false)?;
+        reader.SetStreamSelection(audio, true)?;
+        let wanted = MFCreateMediaType()?;
+        wanted.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)?;
+        wanted.SetGUID(&MF_MT_SUBTYPE, &MFAudioFormat_Float)?;
+        reader.SetCurrentMediaType(audio, None, &wanted)?;
+        // Decoders may settle the output layout (e.g. AC-3 decoded to 5.1) only once
+        // decoding starts, so the format is read again whenever it changes.
+        let format = || -> Result<(u32, usize)> {
+            let t = reader.GetCurrentMediaType(audio)?;
+            Ok((t.GetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND)?, t.GetUINT32(&MF_MT_AUDIO_NUM_CHANNELS)?.max(1) as usize))
+        };
+        let (mut rate, mut channels) = format()?;
+
+        let mut writer = WavWriter::create(target, TARGET_RATE)?;
+        let mut resampler = Downsampler::new(rate, channels);
+        loop {
+            let mut flags = 0u32;
+            let mut sample: Option<IMFSample> = None;
+            reader.ReadSample(audio, 0, None, Some(&mut flags), None, Some(&mut sample))?;
+            if flags & MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED.0 as u32 != 0 || writer.frames() == 0 {
+                let now = format()?;
+                if now != (rate, channels) {
+                    (rate, channels) = now;
+                    resampler = Downsampler::new(rate, channels);
+                }
+            }
+            if let Some(sample) = sample {
+                let buffer = sample.ConvertToContiguousBuffer()?;
+                let mut ptr = std::ptr::null_mut();
+                let mut len = 0u32;
+                buffer.Lock(&mut ptr, None, Some(&mut len))?;
+                let floats = std::slice::from_raw_parts(ptr as *const f32, len as usize / 4);
+                let scaled: Vec<f32> = floats.iter().map(|s| s * 32767.0).collect();
+                buffer.Unlock()?;
+                writer.write(&resampler.process(&scaled))?;
+            }
+            if flags & MF_SOURCE_READERF_ENDOFSTREAM.0 as u32 != 0 {
+                break;
+            }
+        }
+        let frames = writer.frames();
+        writer.finish()?;
+        if frames == 0 {
+            bail!("File tidak berisi audio yang bisa dibaca.");
+        }
+        Ok(frames as f64 / TARGET_RATE as f64)
+    }
 }
 
 #[cfg(test)]

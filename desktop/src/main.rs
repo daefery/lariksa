@@ -135,8 +135,12 @@ async fn export(app: S<'_>, window: WebviewWindow, meeting_id: String, kind: Str
 }
 
 #[tauri::command]
-fn copy_text(text: String) -> Value {
-    match clipboard::set(&text) {
+fn copy_text(window: WebviewWindow, text: String) -> Value {
+    #[cfg(windows)]
+    let owner = window.hwnd().ok().map(|h| h.0 as isize);
+    #[cfg(not(windows))]
+    let owner: Option<isize> = { let _ = window; None };
+    match clipboard::set(&text, owner) {
         Ok(()) => json!({"ok": true}),
         Err(e) => json!({"ok": false, "error": e}),
     }
@@ -342,9 +346,10 @@ fn main() {
 
 mod clipboard {
     /// Plain-text clipboard, Unicode intact (WhatsApp messages carry bullets and accents).
+    /// ``owner`` is the window that owns the clipboard data (Win32 needs one for EmptyClipboard).
     #[cfg(windows)]
-    pub fn set(text: &str) -> Result<(), String> {
-        use windows::Win32::Foundation::{HANDLE, HGLOBAL};
+    pub fn set(text: &str, owner: Option<isize>) -> Result<(), String> {
+        use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL, HWND};
         use windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData};
         use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
         const CF_UNICODETEXT: u32 = 13;
@@ -352,7 +357,7 @@ mod clipboard {
         unsafe {
             let mut opened = false;
             for _ in 0..10 {
-                if OpenClipboard(None).is_ok() {
+                if OpenClipboard(owner.map(|h| HWND(h as *mut _))).is_ok() {
                     opened = true;
                     break;
                 }
@@ -365,9 +370,17 @@ mod clipboard {
                 EmptyClipboard().map_err(|e| e.to_string())?;
                 let mem: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, wide.len() * 2).map_err(|e| e.to_string())?;
                 let ptr = GlobalLock(mem) as *mut u16;
+                if ptr.is_null() {
+                    let _ = GlobalFree(Some(mem));
+                    return Err("Clipboard: memori tidak tersedia.".into());
+                }
                 std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr, wide.len());
                 let _ = GlobalUnlock(mem);
-                SetClipboardData(CF_UNICODETEXT, Some(HANDLE(mem.0))).map_err(|e| e.to_string())?;
+                // On success the system owns the memory; on failure it is still ours to free.
+                if let Err(e) = SetClipboardData(CF_UNICODETEXT, Some(HANDLE(mem.0))) {
+                    let _ = GlobalFree(Some(mem));
+                    return Err(e.to_string());
+                }
                 Ok(())
             })();
             let _ = CloseClipboard();
@@ -376,7 +389,7 @@ mod clipboard {
     }
 
     #[cfg(not(windows))]
-    pub fn set(_: &str) -> Result<(), String> {
+    pub fn set(_: &str, _: Option<isize>) -> Result<(), String> {
         Err("Clipboard hanya di Windows.".into())
     }
 }

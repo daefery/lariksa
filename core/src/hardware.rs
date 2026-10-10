@@ -66,15 +66,13 @@ pub fn choose_device(devices: &[Device], need_mib: u64) -> Option<&Device> {
     devices.iter().find(|d| d.integrated() && d.free_mib >= need_mib)
 }
 
+/// GPUs as llama.cpp sees them; empty (CPU) if the probe fails or hangs past a minute.
 pub fn list_devices(server: &Path) -> Vec<Device> {
     if !server.exists() {
         return vec![];
     }
-    match crate::process::command(server).arg("--list-devices").output() {
-        Ok(out) => {
-            let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
-            parse_devices(&text)
-        }
+    match crate::process::output_within(server, &["--list-devices"], std::time::Duration::from_secs(60)) {
+        Ok(text) => parse_devices(&text),
         Err(e) => {
             log::warn!("Could not list GPU devices: {e}");
             vec![]

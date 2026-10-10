@@ -27,11 +27,61 @@ pub fn spawn(mut cmd: Command) -> std::io::Result<Child> {
     Ok(child)
 }
 
+/// Run a short command and collect stdout + stderr; kill it if it outlives ``timeout``.
+pub fn output_within(program: &std::path::Path, args: &[&str], timeout: std::time::Duration) -> std::io::Result<String> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut cmd = command(program);
+    cmd.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = spawn(cmd)?;
+    // Read both pipes on threads so a chatty child never blocks on a full pipe.
+    let mut out = child.stdout.take().unwrap();
+    let mut err = child.stderr.take().unwrap();
+    let out_t = std::thread::spawn(move || {
+        let mut s = String::new();
+        let _ = out.read_to_string(&mut s);
+        s
+    });
+    let err_t = std::thread::spawn(move || {
+        let mut s = String::new();
+        let _ = err.read_to_string(&mut s);
+        s
+    });
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        if child.try_wait()?.is_some() {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            stop(&mut child);
+            return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, format!("{} timed out", program.display())));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    Ok(format!("{}{}", out_t.join().unwrap_or_default(), err_t.join().unwrap_or_default()))
+}
+
 pub fn stop(child: &mut Child) {
     if let Ok(None) = child.try_wait() {
         let _ = child.kill();
     }
     let _ = child.wait();
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn output_and_timeout() {
+        let sh = std::path::Path::new("/bin/sh");
+        assert_eq!(output_within(sh, &["-c", "echo out; echo err >&2"], Duration::from_secs(5)).unwrap(), "out\nerr\n");
+        let t = Instant::now();
+        let hung = output_within(sh, &["-c", "sleep 30"], Duration::from_millis(300));
+        assert_eq!(hung.unwrap_err().kind(), std::io::ErrorKind::TimedOut);
+        assert!(t.elapsed() < Duration::from_secs(5)); // killed, not waited for
+    }
 }
 
 #[cfg(windows)]

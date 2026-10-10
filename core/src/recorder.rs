@@ -295,21 +295,41 @@ mod wasapi_impl {
 
         let mut queue: VecDeque<u8> = VecDeque::new();
         let mut samples: Vec<f32> = Vec::new();
-        while running.load(Ordering::SeqCst) {
-            // Loopback signals no event while nothing plays: time out, then pad.
-            let _ = event.wait_for_event(250);
-            if capture.read_from_device_to_deque(&mut queue).is_err() {
+        // One wake can cover several packets; read until the device has none left.
+        let drain = |queue: &mut VecDeque<u8>| -> bool {
+            loop {
+                match capture.get_next_packet_size() {
+                    Ok(Some(0)) => return true,
+                    Ok(_) => {
+                        if capture.read_from_device_to_deque(queue).is_err() {
+                            return false;
+                        }
+                    }
+                    Err(_) => return false,
+                }
+            }
+        };
+        let mut device_ok = true;
+        loop {
+            let stopping = !running.load(Ordering::SeqCst);
+            if !stopping {
+                // Loopback signals no event while nothing plays: time out, then pad.
+                let _ = event.wait_for_event(250);
+            }
+            if !drain(&mut queue) {
                 log::warn!("Audio device lost while recording");
-                break;
+                device_ok = false;
             }
             samples.clear();
-            while queue.len() >= 4 {
-                let b = [queue.pop_front().unwrap(), queue.pop_front().unwrap(), queue.pop_front().unwrap(), queue.pop_front().unwrap()];
-                samples.push(f32::from_le_bytes(b) * 32767.0);
-            }
+            samples.extend(queue.drain(..queue.len() - queue.len() % 4).collect::<Vec<u8>>().chunks_exact(4).map(|b| {
+                f32::from_le_bytes([b[0], b[1], b[2], b[3]]) * 32767.0
+            }));
             if let Err(e) = writer.push(started.elapsed().as_secs_f64(), &samples) {
                 log::error!("Writing audio failed: {e}");
                 break;
+            }
+            if stopping || !device_ok {
+                break; // the last pass above flushed what the device still held
             }
         }
         let _ = client.stop_stream();

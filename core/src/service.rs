@@ -474,7 +474,10 @@ impl LariksaService {
         if id == *self.recording_id.lock().unwrap() || id == self.activity().meeting_id {
             return fail("Rapat ini sedang direkam atau diproses.");
         }
-        let _ = self.store.delete(id);
+        // The database row goes first: if that fails, the recording must stay.
+        if let Err(e) = self.store.delete(id) {
+            return fail(e);
+        }
         let _ = std::fs::remove_dir_all(self.paths.meeting_dir(id));
         ok()
     }
@@ -815,6 +818,20 @@ mod tests {
         assert_eq!(svc.delete(&id)["ok"], true);
         assert!(svc.meeting(&id).is_null());
         assert!(!svc.paths.meeting_dir(&id).exists());
+        svc.shutdown();
+    }
+
+    #[test]
+    fn a_failed_database_delete_keeps_the_recording() {
+        let dir = tempfile::tempdir().unwrap();
+        let svc = svc(dir.path());
+        let id = id_of(&svc.import_file(&audio_file(dir.path(), "a.wav"), ""));
+        wait_status(&svc, &id, &[DONE]);
+        // Make the database read-only so the delete fails.
+        svc.store.set_read_only_for_test();
+        let r = svc.delete(&id);
+        assert_eq!(r["ok"], false);
+        assert!(svc.paths.meeting_dir(&id).exists());
         svc.shutdown();
     }
 

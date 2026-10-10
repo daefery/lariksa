@@ -289,6 +289,11 @@ impl Store {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub fn set_read_only_for_test(&self) {
+        self.conn().pragma_update(None, "query_only", true).unwrap();
+    }
+
     pub fn delete(&self, id: &str) -> Result<()> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
