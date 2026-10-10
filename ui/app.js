@@ -292,7 +292,7 @@ function renderSide(m) {
   const n = m.notulen;
   const toc = $("side-chapters");
   toc.replaceChildren(...(n?.chapters?.length ? [el("h5", {}, m.labels.chapters),
-    el("ul", { class: "toc" }, n.chapters.map((c) => el("li", {}, el("button", { "data-start": c.start, onclick: () => jumpTo(c.start, c.refs[0]) },
+    el("ul", { class: "toc" }, n.chapters.map((c) => el("li", {}, el("button", { class: "chapter-link", "data-start": c.start, onclick: () => jumpTo(c.start, c.refs[0]) },
       el("time", {}, clock(c.start)), el("span", {}, c.title)))))] : []));
 
   const spk = $("side-speakers");

@@ -42,7 +42,7 @@ You can start the next meeting while the previous one is still processing; jobs 
 
 ![The same meeting as Indonesian notulen (Ringkasan, Keputusan, PIC) and as English notulen (Summary, Decisions, Owner).](docs/assets/languages.png)
 
-Indonesian with English work terms ("Jadi kita need to align soal deadline-nya") stays Indonesian. An English meeting gets English notulen, headings included, on screen and in every export. You can also pin one language in **Pengaturan** (Settings).
+Indonesian with English work terms ("Jadi kita need to align soal deadline-nya") stays Indonesian. An English meeting gets English notulen, headings included, on screen and in every export. You can also pin one language in **Pengaturan** (Settings). The app itself (menus, buttons, messages) can be shown in Bahasa Indonesia or English: **Pengaturan → Bahasa tampilan**.
 
 ## The app
 
@@ -58,7 +58,7 @@ Indonesian with English work terms ("Jadi kita need to align soal deadline-nya")
 | ![Notulen](docs/assets/screen-notulen.png) | ![Transcript](docs/assets/screen-transcript.png) |
 | **Notulen.** Click any text to edit; it saves automatically. | **Transcript.** Who said what, with timestamps. |
 | ![Settings](docs/assets/screen-settings.png) | ![Dark theme](docs/assets/screen-dark.png) |
-| **Settings.** Languages, model, glossary, downloads. | **Dark theme.** |
+| **Settings.** Display language, meeting languages, model, glossary, downloads. | **Dark theme.** |
 
 </details>
 

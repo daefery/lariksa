@@ -28,6 +28,9 @@ Get-FileHash .\Lariksa-portable.zip -Algorithm SHA256
 | AI downloads | 4 GB (+1.3 GB NVIDIA) | 3.1 GB |
 | Transcribing 10 min on GPU | 21 s, NVIDIA only | 36 s, NVIDIA, AMD or Intel |
 
+- **New: display language.** Settings → Display language switches every screen, the recording indicator and app messages between Bahasa Indonesia and English, instantly. Notulen still follow the language of each meeting.
+- **Cleaner transcripts on laptop speakers.** When the mic picks up the meeting from the speakers, Whisper used to invent lines ("Terima kasih telah menonton", "Bersambung", one phrase repeated for minutes). Those are now removed, and "Detect automatically" no longer mistakes a quiet start for another language.
+- **One icon set** across the app, equal-width Settings cards, and a readable chapter list in the dark theme.
 - Transcription now uses whisper.cpp instead of faster-whisper. The wording of transcripts differs slightly from 0.1.0 (about 80% of words match on the same audio; neither is clearly more accurate), so regenerated notulen can differ a little too.
 - The NVIDIA download (cuBLAS and cuDNN, 1.3 GB) is gone: both engines use the GPU through Vulkan and pick the discrete GPU over the built-in one.
 
