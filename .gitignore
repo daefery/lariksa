@@ -13,3 +13,5 @@ dist/
 *.pdf
 *.zip
 target/
+council/
+desktop/gen/

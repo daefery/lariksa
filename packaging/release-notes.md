@@ -39,4 +39,5 @@ Replace `Lariksa.exe` in your existing folder and delete `_internal\`. Your meet
 
 - Tested on one laptop (Windows 11, RTX 3050 Ti) with audio played through the speakers; not yet on Windows 10, on a laptop with only built-in graphics, or in a live Zoom/Meet call.
 - Without any usable graphics card, transcribing 10 minutes takes about 10 minutes on an i7-12650H (0.1.0 took about 3). Pick **Whisper small** in Settings for about 2 minutes, at lower accuracy.
+- Imported video with Dolby Digital (AC-3) sound, common on DVDs and TV recordings, needs Windows' AC-3 codec, which Windows 11 24H2 no longer includes. Zoom, Teams and Meet recordings (AAC, Opus) are not affected.
 - On laptop speakers your mic also hears the other participants. Lariksa removes that echo, but a headset gives the cleanest transcript.

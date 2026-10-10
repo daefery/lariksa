@@ -1,6 +1,0 @@
-[major] desktop/src/main.rs:355 - OpenClipboard(None) followed by EmptyClipboard leaves a NULL owner; Win32 documents SetClipboardData failure - pass the window HWND and handle allocation failures safely.
-[major] core/Cargo.toml:22 - Valid ALAC .m4a and AC3 .mkv imports now fail with unsupported-codec errors (reproduced); Python decoded these through FFmpeg - enable ALAC and supply a fallback for unsupported codecs.
-[major] core/src/service.rs:477 - Failed database deletion still removes audio and returns success (reproduced: row remains, audio gone) - propagate the database error before touching recordings; report filesystem failures too.
-[major] core/src/recorder.rs:300 - Only one WASAPI packet is read per wake; coalesced events leave queued audio behind, risking overflow and lost final speech - drain all available packets before waiting/padding and drain remaining packets on stop.
-[major] core/src/hardware.rs:73 - GPU probing lost Python's 60-second timeout and bypasses the kill-on-close job; a hung probe stalls processing indefinitely - use managed spawning, a timeout, termination and CPU fallback.
-Verdict: BLOCK — fix these regressions; 114 core tests pass, Windows paths reviewed statically. Non-blocking 10x target: reduce ten manual parity checks to one Windows fixture-suite command, starting with these cases.
