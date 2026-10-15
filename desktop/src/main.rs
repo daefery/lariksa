@@ -100,6 +100,16 @@ fn download(app: S, keys: Vec<String>) -> Value {
 }
 
 #[tauri::command]
+fn remove_asset(app: S, key: String) -> Value {
+    app.svc.remove_asset(&key)
+}
+
+#[tauri::command]
+async fn check_llm_api(app: S<'_>, url: String, key: String) -> Result<Value, ()> {
+    Ok(app.svc.check_llm_api(&url, &key))
+}
+
+#[tauri::command]
 async fn import_audio(app: S<'_>, window: WebviewWindow) -> Result<Value, ()> {
     let exts: Vec<&str> = import_types().iter().map(|e| e.trim_start_matches('.')).collect();
     let picked = rfd::FileDialog::new().set_parent(&window).add_filter(tr("Rekaman atau transkrip", "Recording or transcript"), &exts).pick_file();
@@ -318,7 +328,7 @@ fn main() {
         .manage(app.clone())
         .invoke_handler(tauri::generate_handler![
             status, meetings, meeting, start_recording, stop_recording, rename, save_notulen, retry, delete,
-            save_settings, download, import_audio, export, copy_text, hotkey_label, hotkey_error, show_main,
+            save_settings, download, remove_asset, check_llm_api, import_audio, export, copy_text, hotkey_label, hotkey_error, show_main,
             hide_pill, start_drag
         ])
         .setup(move |tauri_app| {

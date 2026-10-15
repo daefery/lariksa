@@ -16,6 +16,8 @@
     delete: (meetingId) => invoke("delete", { meetingId }),
     save_settings: (values) => invoke("save_settings", { values }),
     download: (keys) => invoke("download", { keys }),
+    remove_asset: (key) => invoke("remove_asset", { key }),
+    check_llm_api: (url, key) => invoke("check_llm_api", { url, key }),
     import_audio: () => invoke("import_audio"),
     export: (meetingId, kind) => invoke("export", { meetingId, kind }),
     copy_text: (text) => invoke("copy_text", { text }),

@@ -163,6 +163,29 @@
             <option value="whisper-small" data-i18n="s.whisper.small">Whisper small (lebih ringan)</option>
           </select>
         </label>
+        <fieldset class="llm">
+          <legend data-i18n="s.llm.label">Yang menulis notulen</legend>
+          <label class="check"><input type="radio" name="s-llm" value="local"> <span data-i18n="s.llm.local">Model lokal di laptop ini (offline)</span></label>
+          <label class="check"><input type="radio" name="s-llm" value="api"> <span data-i18n="s.llm.api">API yang kompatibel dengan OpenAI</span></label>
+          <div id="s-api" class="api-fields hidden">
+            <label><span data-i18n="s.api.url">Alamat API</span>
+              <input id="s-api-url" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false">
+            </label>
+            <label><span data-i18n="s.api.key">Kunci API</span>
+              <input id="s-api-key" type="password" autocomplete="off" spellcheck="false">
+              <small id="s-api-key-note"></small>
+            </label>
+            <label><span data-i18n="s.api.model">Model</span>
+              <span class="row">
+                <input id="s-api-model" list="s-api-models" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false">
+                <button type="button" class="ghost" id="s-api-check" data-i18n="s.api.check">Tes koneksi</button>
+              </span>
+              <datalist id="s-api-models"></datalist>
+              <small id="s-api-status"></small>
+            </label>
+            <small class="warn" data-i18n="s.api.privacy">Teks transkrip dikirim ke alamat ini untuk menulis notulen. Audio tetap di laptop.</small>
+          </div>
+        </fieldset>
         <label><span data-i18n="s.glossary.label">Glosarium: nama orang, produk, istilah</span>
           <textarea id="s-glossary" rows="4" placeholder="Sari, Budi, OKR, sprint review, Solve Education"></textarea>
           <small data-i18n="s.glossary.note">Dipakai untuk membantu AI mengeja nama dan istilah dengan benar.</small>

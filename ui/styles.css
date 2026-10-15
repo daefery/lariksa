@@ -234,3 +234,12 @@ kbd{font-family:var(--font-mono);font-size:11px;padding:2px 6px;border-radius:5p
 .form label.check{display:flex;align-items:center;gap:10px;font-weight:500}
 .form label.check input{min-height:0;width:18px;height:18px;accent-color:var(--focus-ring)}
 .warn-text{color:var(--warning)!important;font-weight:600}
+/* ---------------------------------------------------------------- minutes model: local or API */
+.form fieldset.llm{border:0;padding:0;margin:0;display:grid;gap:10px;min-width:0}
+.form fieldset.llm legend{font-weight:600;font-size:13px;padding:0;margin-bottom:8px}
+.api-fields{display:grid;gap:14px;padding:14px 16px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--surface-muted)}
+.api-fields .row{display:flex;gap:8px;align-items:stretch}
+.api-fields .row input{flex:1;min-width:0}
+.form .api-fields small.warn{color:var(--warning);font-weight:600}
+.form small.ok{color:var(--success);font-weight:600}
+.form small.err{color:var(--error);font-weight:600;overflow-wrap:anywhere}

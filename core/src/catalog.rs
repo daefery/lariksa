@@ -220,7 +220,12 @@ fn sha256_file(path: &Path) -> Result<String> {
 }
 
 fn agent() -> ureq::Agent {
-    let builder = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(30)).timeout_read(Duration::from_secs(120));
+    http_agent(Duration::from_secs(120))
+}
+
+/// An HTTPS-capable client; Windows uses the system certificate store.
+pub fn http_agent(read_timeout: Duration) -> ureq::Agent {
+    let builder = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(30)).timeout_read(read_timeout);
     #[cfg(windows)]
     let builder = builder.tls_connector(std::sync::Arc::new(native_tls::TlsConnector::new().expect("TLS")));
     builder.build()

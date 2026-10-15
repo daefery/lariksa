@@ -60,6 +60,10 @@ pub fn default_settings() -> Map<String, Value> {
         "hotkey": DEFAULT_HOTKEY,    // global start/stop shortcut; "" disables it
         "show_pill": true,           // floating always-on-top recording indicator
         "ui_language": "id",         // language of the app's own screens and messages: id | en
+        "llm_provider": "local",      // who writes the notulen: local (llama.cpp) | api (OpenAI-compatible)
+        "llm_api_url": "",          // e.g. https://api.openai.com/v1 or http://127.0.0.1:8317/v1
+        "llm_api_key": "",          // never sent back to the UI; see LariksaService::public_settings
+        "llm_api_model": "",
     });
     v.as_object().unwrap().clone()
 }

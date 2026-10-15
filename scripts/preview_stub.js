@@ -9,9 +9,11 @@
 //   tab=notulen|transcript              meeting tab
 //   lang=id|en                          language of the sample meeting
 //   theme=light|dark
+//   llm=local|api                       who writes the minutes (Settings)
 (() => {
   const params = new URLSearchParams(location.search);
   const scenario = params.get("s") || "home";
+  const viaApi = params.get("llm") === "api";
   const lang = params.get("lang") === "en" ? "en" : "id";
   const sample = window.SAMPLE;
   const now = new Date();
@@ -39,6 +41,8 @@
     llama: { label: "Mesin AI lokal (llama.cpp)", size: 33e6, installed: scenario !== "setup" },
     whisper: { label: "Mesin transkripsi (whisper.cpp)", size: 9e6, installed: scenario !== "setup" },
   };
+  // Mirrors core/src/service.rs: downloaded single-file models can be removed.
+  for (const k of ["whisper-turbo", "whisper-small", "vad", "llm"]) assets[k].removable = true;
   const t0 = Date.now();
   const status = () => {
     const live = scenario === "recording";
@@ -52,10 +56,12 @@
         downloads: scenario === "setup" ? { "whisper-turbo": { label: "", done: 0.37 * 574e6, total: 574e6, error: "" } } : {} },
       queue: 0,
       compute: { label: "GPU (NVIDIA GeForce RTX 3050 Ti Laptop GPU)", device: "gpu", gpu: "NVIDIA GeForce RTX 3050 Ti Laptop GPU" },
-      assets, needed: ["whisper-turbo", "vad", "llm", "llama", "whisper"], ready: scenario !== "setup",
+      assets, needed: ["whisper-turbo", "vad", ...(viaApi ? [] : ["llm"]), "llama", "whisper"], ready: scenario !== "setup",
       settings: { language: "id", notulen_language: "auto", whisper_model: "auto",
         glossary: ["Budi", "Sari", "Dewi", "regression test", "staging"], theme: params.get("theme") || "light",
-        ui_language: params.get("ui") === "en" ? "en" : "id", hotkey: "Ctrl+Shift+R", show_pill: true },
+        ui_language: params.get("ui") === "en" ? "en" : "id", hotkey: "Ctrl+Shift+R", show_pill: true,
+        llm_provider: viaApi ? "api" : "local", llm_api_url: viaApi ? "http://127.0.0.1:8317/v1" : "",
+        llm_api_model: viaApi ? "gemini-3-flash" : "", llm_api_key_set: viaApi },
     };
   };
   // A full meeting payload (as returned by the real service) can be injected for previews.
@@ -75,7 +81,8 @@
       meetings: async (q) => meetings.filter((m) => !q || (m.title + m.preview).toLowerCase().includes(q.toLowerCase())),
       meeting: async (id) => detail(id),
       start_recording: ok, stop_recording: ok, rename: ok, save_notulen: ok, retry: ok, delete: ok,
-      download: ok, export: ok, copy_text: ok,
+      download: ok, export: ok, copy_text: ok, remove_asset: ok,
+      check_llm_api: async () => ({ ok: true, models: ["claude-sonnet-4-6", "gemini-3-flash", "gpt-6-luna"] }),
       save_settings: async (v) => v,
       import_audio: async () => ({ ok: false, error: "" }),
       hotkey_label: async () => "Ctrl+Shift+R", hotkey_error: async () => "", show_main: ok, hide_pill: ok,

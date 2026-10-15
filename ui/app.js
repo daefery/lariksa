@@ -468,18 +468,29 @@ async function downloadAssets(keys) {
   poll();
 }
 
+async function removeAsset(k) {
+  if (!confirm(t("confirm.remove", { name: state.status.assets[k].label }))) return;
+  const r = await api().remove_asset(k);
+  if (!r.ok) toast(r.error);
+  await poll();
+  renderAssets(state.status);
+}
+
 function renderAssets(s) {
   const box = $("assets");
-  const keys = [...new Set([...s.needed, "whisper-small"])];
+  // The minutes model stays listed in API mode, so it can be removed or fetched again.
+  const keys = [...new Set([...s.needed, "whisper-small", "llm"])];
   box.replaceChildren(...keys.map((k) => {
     const a = s.assets[k], d = s.activity.downloads[k];
+    const unused = !s.needed.includes(k);
     let right;
-    if (a.installed) right = el("span", { class: "ok" }, t("asset.installed"));
+    if (a.installed && unused && a.removable) right = el("button", { class: "ghost", onclick: () => removeAsset(k) }, t("asset.remove"));
+    else if (a.installed) right = el("span", { class: "ok" }, t("asset.installed"));
     else if (d && !d.error) right = el("span", {}, `${Math.round((d.done / d.total) * 100)}%`);
     else right = el("button", { class: "ghost", onclick: () => downloadAssets([k]) }, t(d?.error ? "asset.retry" : "asset.download"));
     return el("div", { class: "asset" },
       el("div", {}, el("div", { class: "name" }, a.label),
-        el("small", {}, bytes(a.size)),
+        el("small", {}, unused && a.installed ? t("asset.unused", { size: bytes(a.size) }) : bytes(a.size)),
         d?.error ? el("div", { class: "err" }, d.error) : null),
       right);
   }));
@@ -495,16 +506,60 @@ function renderSettings() {
   $("s-glossary").value = s.settings.glossary.join(", ");
   $("s-hotkey").value = s.settings.hotkey || "";
   $("s-pill").checked = s.settings.show_pill !== false;
+  const provider = s.settings.llm_provider === "api" ? "api" : "local";
+  document.querySelector(`input[name="s-llm"][value="${provider}"]`).checked = true;
+  $("s-api-url").value = s.settings.llm_api_url || "";
+  $("s-api-model").value = s.settings.llm_api_model || "";
+  $("s-api-key").value = "";
+  renderApiKeyNote(s.settings.llm_api_key_set);
+  $("s-api-status").textContent = "";
+  showApiFields();
   showHotkeyError(state.hotkeyError);
   renderAssets(s);
 }
 
+function llmProvider() {
+  return document.querySelector('input[name="s-llm"]:checked')?.value || "local";
+}
+
+function showApiFields() {
+  $("s-api").classList.toggle("hidden", llmProvider() !== "api");
+}
+
+// The saved key never comes back to the screen; an empty field keeps it.
+function renderApiKeyNote(isSet) {
+  $("s-api-key").placeholder = isSet ? "••••••••" : "sk-…";
+  $("s-api-key-note").textContent = t(isSet ? "s.api.key.saved" : "s.api.key.none");
+}
+
+async function checkApi() {
+  const status = $("s-api-status");
+  status.classList.remove("err", "ok");
+  status.textContent = t("s.api.checking");
+  const r = await api().check_llm_api($("s-api-url").value, $("s-api-key").value);
+  if (!r.ok) {
+    status.classList.add("err");
+    status.textContent = r.error;
+    return;
+  }
+  $("s-api-models").replaceChildren(...r.models.map((m) => el("option", { value: m })));
+  status.classList.add("ok");
+  status.textContent = t("s.api.ok", { n: r.models.length });
+}
+
 async function saveSettings() {
-  const saved = await api().save_settings({
+  const values = {
     ui_language: $("s-ui-language").value, language: $("s-language").value, notulen_language: $("s-notulen-language").value,
     whisper_model: $("s-whisper").value, glossary: $("s-glossary").value,
     hotkey: $("s-hotkey").value.trim(), show_pill: $("s-pill").checked,
-  });
+    llm_provider: llmProvider(), llm_api_url: $("s-api-url").value, llm_api_model: $("s-api-model").value,
+  };
+  if ($("s-api-key").value.trim()) values.llm_api_key = $("s-api-key").value;
+  const saved = await api().save_settings(values);
+  if (saved.ok === false) {
+    toast(saved.error);
+    return;
+  }
   state.hotkeyError = saved.hotkey_error || "";
   state.hotkeyLabel = state.hotkeyError ? "" : (saved.hotkey || "");
   applyLanguage(saved.ui_language);
@@ -542,6 +597,8 @@ function wire() {
   $("record").addEventListener("click", toggleRecord);
   $("setup-go").addEventListener("click", () => downloadAssets(state.status.needed.filter((k) => !state.status.assets[k].installed)));
   $("s-save").addEventListener("click", saveSettings);
+  document.querySelectorAll('input[name="s-llm"]').forEach((r) => r.addEventListener("change", showApiFields));
+  $("s-api-check").addEventListener("click", checkApi);
   $("theme").addEventListener("click", async () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;

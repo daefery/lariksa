@@ -15,7 +15,7 @@ use crate::audio::repair_wav;
 use crate::catalog::{self, Asset};
 use crate::hardware::{self, Device};
 use crate::i18n::tr;
-use crate::llm::LocalLlm;
+use crate::llm::{self, ApiLlm, LocalLlm};
 use crate::media::MediaServer;
 use crate::minutes::{lines_from, Action, Chapter, Minutes, Point};
 use crate::pipeline::{self, Engines, Job as PipelineJob, LlmLike, TranscriberLike, MIC_FILE, SYSTEM_FILE};
@@ -68,11 +68,13 @@ struct Queue {
     jobs: VecDeque<Job>,
 }
 
-/// Builds the real engines: whisper.cpp and llama.cpp on the chosen GPU.
+/// Builds the real engines: whisper.cpp on the chosen GPU, and the notulen
+/// model either from llama.cpp on that GPU or from an API.
 pub struct RealEngines {
     paths: Paths,
     whisper: Asset,
     gpu: Option<Device>,
+    api: Option<ApiLlm>,
 }
 
 struct WhisperEngine(Transcriber);
@@ -87,6 +89,28 @@ impl LlmLike for LocalLlm {
     fn complete_json(&mut self, system: &str, user: &str, schema: Schema) -> anyhow::Result<Value> {
         LocalLlm::complete_json(self, system, user, schema)
     }
+}
+
+impl LlmLike for ApiLlm {
+    fn complete_json(&mut self, system: &str, user: &str, schema: Schema) -> anyhow::Result<Value> {
+        ApiLlm::complete_json(self, system, user, schema)
+    }
+}
+
+/// The API the notulen goes to, when Settings choose one over the local model.
+pub fn api_llm(settings: &Map<String, Value>) -> Option<ApiLlm> {
+    (setting_str(settings, "llm_provider") == "api").then(|| ApiLlm {
+        url: setting_str(settings, "llm_api_url"),
+        key: setting_str(settings, "llm_api_key"),
+        model: setting_str(settings, "llm_api_model"),
+    })
+}
+
+/// Settings as the UI may see them: the API key is replaced by whether one is saved.
+pub fn public_settings(mut settings: Map<String, Value>) -> Map<String, Value> {
+    let key = settings.remove("llm_api_key");
+    settings.insert("llm_api_key_set".into(), json!(key.is_some_and(|k| k.as_str().is_some_and(|k| !k.is_empty()))));
+    settings
 }
 
 impl Engines for RealEngines {
@@ -107,6 +131,10 @@ impl Engines for RealEngines {
     }
 
     fn llm(&self) -> anyhow::Result<Box<dyn LlmLike + '_>> {
+        if let Some(api) = &self.api {
+            log::info!("Notulen through the API at {} with model {}", llm::api_base(&api.url), api.model);
+            return Ok(Box::new(api.clone()));
+        }
         let llama = catalog::asset(catalog::LLAMA_RUNTIME).unwrap();
         let model = catalog::asset(catalog::SUMMARY_MODEL).unwrap();
         let server = llama.path(&self.paths).join(catalog::exe("llama-server"));
@@ -258,10 +286,12 @@ impl LariksaService {
         let settings = self.store.settings();
         let assets: Map<String, Value> = catalog::assets()
             .into_iter()
-            .map(|a| (a.key.to_string(), json!({"label": a.label(), "size": a.size(), "installed": a.installed(&self.paths)})))
+            .map(|a| {
+                let removable = a.base == catalog::Base::Models && a.unpack == catalog::Unpack::Files;
+                (a.key.to_string(), json!({"label": a.label(), "size": a.size(), "installed": a.installed(&self.paths), "removable": removable}))
+            })
             .collect();
-        let whisper = Self::whisper_asset(&settings);
-        let needed = [whisper.key, catalog::VAD_MODEL, catalog::SUMMARY_MODEL, catalog::LLAMA_RUNTIME, catalog::WHISPER_RUNTIME];
+        let needed = Self::needed(&settings);
         let ready = needed.iter().all(|k| assets[*k]["installed"] == true);
         let recording = self.recorder.recording();
         let activity = self.activity();
@@ -284,8 +314,64 @@ impl LariksaService {
             "assets": assets,
             "needed": needed,
             "ready": ready,
-            "settings": settings,
+            "settings": public_settings(settings),
         })
+    }
+
+    /// Assets this configuration runs on. The llama.cpp runtime stays even with an
+    /// API: its device list picks the GPU for Whisper, and it brings Whisper's Vulkan backend.
+    pub fn needed(settings: &Map<String, Value>) -> Vec<&'static str> {
+        let mut keys = vec![Self::whisper_asset(settings).key, catalog::VAD_MODEL];
+        if api_llm(settings).is_none() {
+            keys.push(catalog::SUMMARY_MODEL);
+        }
+        keys.extend([catalog::LLAMA_RUNTIME, catalog::WHISPER_RUNTIME]);
+        keys
+    }
+
+    /// Delete a downloaded model this configuration does not use, to free disk space.
+    pub fn remove_asset(&self, key: &str) -> Value {
+        let Some(asset) = catalog::asset(key) else { return fail(format!("{}: {key}", tr("Aset tidak dikenal", "Unknown asset"))) };
+        if asset.base != catalog::Base::Models || asset.unpack != catalog::Unpack::Files {
+            return fail(tr("Mesin ini tidak bisa dihapus.", "This engine cannot be removed."));
+        }
+        if Self::needed(&self.store.settings()).contains(&asset.key) {
+            return fail(tr("Model ini masih dipakai dengan pengaturan sekarang.", "This model is still used by the current settings."));
+        }
+        if self.downloading.load(Ordering::SeqCst) || !self.activity().stage.is_empty() {
+            return fail(tr("Tunggu sampai unduhan atau pemrosesan selesai.", "Wait until the download or processing has finished."));
+        }
+        // Remove the asset's own files (and any half download), never the folder:
+        // the Whisper models and the VAD share one.
+        let folder = asset.path(&self.paths);
+        for name in asset.files.iter().flat_map(|f| [f.name.clone(), format!("{}.part", f.name)]) {
+            match std::fs::remove_file(folder.join(&name)) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return fail(e),
+                _ => {}
+            }
+        }
+        log::info!("Removed {key} to free space");
+        ok()
+    }
+
+    /// Reach the API and list its models. An empty key means the saved one, but
+    /// only for the address it was saved with: a key never goes to another host.
+    pub fn check_llm_api(&self, url: &str, key: &str) -> Value {
+        if !llm::valid_api_url(url) {
+            return fail(tr("Alamat API harus diawali http:// atau https://", "The API address must start with http:// or https://"));
+        }
+        let saved = self.store.settings();
+        let key = if !key.trim().is_empty() {
+            key.trim().to_string()
+        } else if llm::api_base(&setting_str(&saved, "llm_api_url")) == llm::api_base(url) {
+            setting_str(&saved, "llm_api_key")
+        } else {
+            String::new()
+        };
+        match llm::list_models(url, &key) {
+            Ok(models) => json!({"ok": true, "models": models}),
+            Err(e) => fail(e),
+        }
     }
 
     // -- downloads -------------------------------------------------------
@@ -484,10 +570,37 @@ impl LariksaService {
         ok()
     }
 
+    /// Save, then return the settings as the UI may see them. An API choice is
+    /// refused unless it has an address and a model, so processing never starts half-configured.
     pub fn save_settings(&self, values: &Map<String, Value>) -> anyhow::Result<Map<String, Value>> {
-        let saved = self.store.save_settings(values)?;
+        let mut values = values.clone();
+        for key in ["llm_api_url", "llm_api_key", "llm_api_model"] {
+            if let Some(Value::String(s)) = values.get(key) {
+                let trimmed = s.trim().to_string();
+                values.insert(key.into(), json!(trimmed));
+            }
+        }
+        let stored = self.store.settings();
+        // A key belongs to the address it was entered for; a new address without a new key starts keyless.
+        let moved = values.get("llm_api_url").is_some_and(|u| {
+            llm::api_base(u.as_str().unwrap_or("")) != llm::api_base(&setting_str(&stored, "llm_api_url"))
+        });
+        if moved && !values.contains_key("llm_api_key") {
+            values.insert("llm_api_key".into(), json!(""));
+        }
+        let mut merged = stored;
+        merged.extend(values.clone());
+        if let Some(api) = api_llm(&merged) {
+            if !llm::valid_api_url(&api.url) {
+                anyhow::bail!("{}", tr("Alamat API harus diawali http:// atau https://", "The API address must start with http:// or https://"));
+            }
+            if api.model.is_empty() {
+                anyhow::bail!("{}", tr("Pilih model API untuk menulis notulen.", "Choose the API model that writes the minutes."));
+            }
+        }
+        let saved = self.store.save_settings(&values)?;
         crate::i18n::set_language(&setting_str(&saved, "ui_language"));
-        Ok(saved)
+        Ok(public_settings(saved))
     }
 
     pub fn export_docx(&self, id: &str, target: &Path) -> Value {
@@ -511,7 +624,12 @@ impl LariksaService {
     // -- worker ----------------------------------------------------------
 
     fn real_engines(&self, settings: &Map<String, Value>) -> anyhow::Result<Box<dyn Engines>> {
-        Ok(Box::new(RealEngines { paths: self.paths.clone(), whisper: Self::whisper_asset(settings), gpu: self.gpu().cloned() }))
+        Ok(Box::new(RealEngines {
+            paths: self.paths.clone(),
+            whisper: Self::whisper_asset(settings),
+            gpu: self.gpu().cloned(),
+            api: api_llm(settings),
+        }))
     }
 
     fn worker(self: Arc<Self>) {
@@ -915,6 +1033,76 @@ mod tests {
         assert_eq!(s["queue"], 0);
         assert_eq!(s["recording"], false);
         assert_eq!(s["compute"]["label"], "CPU");
+        svc.shutdown();
+    }
+
+    #[test]
+    fn api_mode_drops_the_local_model_and_never_returns_the_key() {
+        let _language = crate::i18n::test_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let svc = svc(dir.path());
+        assert!(svc.status()["needed"].as_array().unwrap().contains(&json!("llm")));
+        let api = json!({"llm_provider": "api", "llm_api_url": " http://127.0.0.1:8317/v1/ ", "llm_api_key": " sk-secret ", "llm_api_model": "gemini-3-flash"});
+        let saved = svc.save_settings(api.as_object().unwrap()).unwrap();
+        assert_eq!((saved.get("llm_api_key"), &saved["llm_api_key_set"]), (None, &json!(true)));
+        let status = svc.status();
+        assert!(!status["needed"].as_array().unwrap().contains(&json!("llm")));
+        assert!(status["needed"].as_array().unwrap().contains(&json!("llama")), "the runtime still picks Whisper's GPU");
+        assert!(!status.to_string().contains("sk-secret"));
+        let engine = api_llm(&svc.store.settings()).unwrap();
+        assert_eq!((engine.url.as_str(), engine.key.as_str()), ("http://127.0.0.1:8317/v1/", "sk-secret"));
+        // Saving other settings (the UI never sends the key back) keeps the key.
+        svc.save_settings(json!({"theme": "dark"}).as_object().unwrap()).unwrap();
+        assert_eq!(api_llm(&svc.store.settings()).unwrap().key, "sk-secret");
+        // Same address spelled differently keeps the key; another address drops it.
+        svc.save_settings(json!({"llm_api_url": "http://127.0.0.1:8317/v1"}).as_object().unwrap()).unwrap();
+        assert_eq!(api_llm(&svc.store.settings()).unwrap().key, "sk-secret");
+        let moved = svc.save_settings(json!({"llm_api_url": "https://elsewhere.example/v1"}).as_object().unwrap()).unwrap();
+        assert_eq!(moved["llm_api_key_set"], false);
+        // Back to local: the model is needed again.
+        svc.save_settings(json!({"llm_provider": "local"}).as_object().unwrap()).unwrap();
+        assert!(api_llm(&svc.store.settings()).is_none());
+        assert!(svc.status()["needed"].as_array().unwrap().contains(&json!("llm")));
+        svc.shutdown();
+    }
+
+    #[test]
+    fn half_configured_api_is_refused() {
+        let _language = crate::i18n::test_lock();
+        crate::i18n::set_language("en");
+        let dir = tempfile::tempdir().unwrap();
+        let svc = svc(dir.path());
+        let no_url = json!({"llm_provider": "api", "llm_api_url": "api.openai.com", "llm_api_model": "m"});
+        assert!(svc.save_settings(no_url.as_object().unwrap()).unwrap_err().to_string().contains("http://"));
+        let no_model = json!({"llm_provider": "api", "llm_api_url": "https://api.openai.com/v1"});
+        assert!(svc.save_settings(no_model.as_object().unwrap()).unwrap_err().to_string().contains("model"));
+        assert_eq!(svc.store.settings()["llm_provider"], "local", "nothing was saved");
+        assert_eq!(svc.check_llm_api("ftp://x", "")["ok"], false);
+        crate::i18n::set_language("id");
+        svc.shutdown();
+    }
+
+    #[test]
+    fn unused_local_model_can_be_removed_but_not_while_in_use() {
+        let dir = tempfile::tempdir().unwrap();
+        let svc = svc(dir.path());
+        for a in crate::catalog::assets() {
+            std::fs::create_dir_all(a.path(&svc.paths)).unwrap();
+            std::fs::write(a.path(&svc.paths).join(&a.marker), b"x").unwrap();
+        }
+        let llm = crate::catalog::asset(crate::catalog::SUMMARY_MODEL).unwrap();
+        assert_eq!(svc.remove_asset("llm")["ok"], false, "local mode still uses it");
+        assert_eq!(svc.remove_asset("llama")["ok"], false, "runtimes stay");
+        assert_eq!(svc.remove_asset("nope")["ok"], false);
+        let api = json!({"llm_provider": "api", "llm_api_url": "https://api.openai.com/v1", "llm_api_model": "m"});
+        svc.save_settings(api.as_object().unwrap()).unwrap();
+        assert_eq!(svc.remove_asset("llm")["ok"], true);
+        assert!(!llm.installed(&svc.paths));
+        assert_eq!(svc.status()["ready"], true, "API mode is ready without it");
+        // whisper-small shares a folder with the turbo model and the VAD; only its file goes.
+        assert_eq!(svc.remove_asset("whisper-small")["ok"], true);
+        assert!(crate::catalog::asset(crate::catalog::WHISPER_TURBO).unwrap().installed(&svc.paths));
+        assert!(crate::catalog::asset(crate::catalog::VAD_MODEL).unwrap().installed(&svc.paths));
         svc.shutdown();
     }
 

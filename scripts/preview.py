@@ -30,6 +30,8 @@ SCENES = {
     "setup": ("s=setup", 780),
     "settings": ("s=home&open=settings", 780),
     "settings-en": ("s=home&open=settings&ui=en", 780),
+    "settings-api": ("s=home&open=settings&llm=api&ui=en", 1900),
+    "settings-api-dark": ("s=home&open=settings&llm=api&ui=en&theme=dark", 1100),
     "home-en": ("s=home&ui=en", 780),
     "meeting-en": ("s=home&open=card&ui=en", 780),
     "dark": ("s=home&open=card&theme=dark", 780),
