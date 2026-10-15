@@ -70,6 +70,10 @@ pub fn chunk_lines(lines: &[Line], size: usize) -> Vec<Vec<Line>> {
 
 static REF_TEXT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\s*[\[(]?\bL\d+(?:\s*[-–,]\s*L?\d+)*[\])]?").unwrap());
+/// The schema's "refs" field written into the prose: "; refs: [].", "(refs: [4, 5])", "Ref: [\"L2\"]".
+static REF_FIELD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?i)[\s;,]*\(?\brefs?\s*:\s*(?:\[[^\]]*\]|L?\d+(?:\s*[-–,]\s*L?\d+)*)\)?"#).unwrap()
+});
 static CLOCK: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\b(?:pada\s+|at\s+)?(?:hari|menit|minute|pukul)?\s*\b\d{1,2}:\d{2}(?::\d{2})?\b").unwrap()
 });
@@ -101,7 +105,8 @@ static QUESTION_CUE: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Remove leaked line refs and transcript clock times; tidy spacing.
 pub fn clean_text(text: &str) -> String {
-    let text = REF_TEXT.replace_all(text, "");
+    let text = REF_FIELD.replace_all(text, "");
+    let text = REF_TEXT.replace_all(&text, "");
     let text = CLOCK.replace_all(&text, "");
     let text = SPACE_BEFORE_PUNCT.replace_all(&squash(&text), "$1").to_string();
     text.trim_matches(|c| matches!(c, ' ' | ',' | ';')).to_string()
@@ -210,6 +215,8 @@ fn sorted_by_start(mut actions: Vec<Action>) -> Vec<Action> {
 ///
 /// The review may only choose among existing candidates (by id) and rewrite the
 /// wording; references, times and due dates stay as grounded in the first pass.
+/// Only an explicit verdict drops a candidate: one the review never mentions is
+/// kept as grounded (an API answered 1 of 22 once, which silently lost 21 tasks).
 pub fn review_actions(actions: Vec<Action>, complete: &mut Complete, prompts: &Writer, speakers: &[String]) -> Vec<Action> {
     if actions.is_empty() {
         return vec![];
@@ -242,22 +249,26 @@ pub fn review_actions(actions: Vec<Action>, complete: &mut Complete, prompts: &W
         _ => vec![],
     };
     let mut chosen: Vec<usize> = Vec::new();
+    let mut judged: Vec<usize> = Vec::new();
+    let mut dropped: Vec<String> = Vec::new();
     let mut actions = actions;
     for row in rows {
-        let verdict = row.get("verdict").and_then(Value::as_str).unwrap_or("follow_up");
-        if verdict != "follow_up" {
-            continue;
-        }
         let index = match row.get("id") {
             Some(Value::Number(n)) => n.as_f64().map(|f| f as i64),
             Some(Value::String(s)) => s.trim().parse::<i64>().ok(),
             _ => None,
         };
         let Some(index) = index.map(|i| i - 1) else { continue };
-        if index < 0 || index as usize >= actions.len() || chosen.contains(&(index as usize)) {
+        if index < 0 || index as usize >= actions.len() || judged.contains(&(index as usize)) {
             continue;
         }
         let index = index as usize;
+        judged.push(index);
+        let verdict = row.get("verdict").and_then(Value::as_str).unwrap_or("follow_up");
+        if verdict != "follow_up" {
+            dropped.push(format!("{verdict}: {} | {}", actions[index].owner, actions[index].task));
+            continue;
+        }
         let action = &mut actions[index];
         let task = clean_value(row.get("task"));
         // Keep the review's wording only when it stays short; padded rewrites lose to the original.
@@ -270,7 +281,14 @@ pub fn review_actions(actions: Vec<Action>, complete: &mut Complete, prompts: &W
         }
         chosen.push(index);
     }
-    let kept: Vec<Action> = chosen.into_iter().map(|i| actions[i].clone()).collect();
+    let unjudged: Vec<usize> = (0..actions.len()).filter(|i| !judged.contains(i)).collect();
+    if !unjudged.is_empty() {
+        log::warn!("Action review left {} of {} candidates without a verdict; kept as found", unjudged.len(), actions.len());
+    }
+    if !dropped.is_empty() {
+        log::info!("Action review dropped {} of {}: {}", dropped.len(), actions.len(), dropped.join("; "));
+    }
+    let kept: Vec<Action> = chosen.into_iter().chain(unjudged).map(|i| actions[i].clone()).collect();
     sorted_by_start(kept)
 }
 
@@ -314,11 +332,15 @@ pub fn write_minutes(
 
         // A failed chunk is skipped, not fatal, unless failures are systematic.
         let mut attempt = |user: String, schema: Schema, empty: Value| -> anyhow::Result<Value> {
+            let started = std::time::Instant::now();
             match complete(&p.system, &user, schema) {
                 Ok(v) => Ok(v),
                 Err(err) => {
                     failures += 1;
-                    log::warn!("Minutes chunk skipped ({err})");
+                    log::warn!(
+                        "Minutes {schema:?} for part {index}/{total} skipped after {:.0} s: {err:#}",
+                        started.elapsed().as_secs_f64()
+                    );
                     if failures >= chunks.len().max(2) {
                         return Err(err);
                     }
@@ -336,6 +358,18 @@ pub fn write_minutes(
         }
         raw["actions"] = todo.get("actions").cloned().unwrap_or(Value::Null);
         let g = ground(&raw, chunk, lines, &speakers);
+        // What the model proposed vs what survived grounding: an empty section is then explainable.
+        log::info!(
+            "Minutes part {index}/{total}: chapters {}/{}, actions {}/{}, decisions {}/{}, questions {}/{}",
+            g.chapters.len(),
+            items(&raw, "chapters").len(),
+            g.actions.len(),
+            items(&raw, "actions").len(),
+            g.decisions.len(),
+            items(&raw, "decisions").len(),
+            g.questions.len(),
+            items(&raw, "questions").len(),
+        );
         all.chapters.extend(g.chapters);
         all.actions.extend(g.actions);
         all.decisions.extend(g.decisions);
@@ -506,6 +540,12 @@ pub mod tests {
         assert_eq!(clean_text("Nama Play Class ditolak board [L6, L7, L8]."), "Nama Play Class ditolak board.");
         assert_eq!(clean_text("Nadia menyampaikan pada hari 04:23 bahwa platform dipisah"), "Nadia menyampaikan bahwa platform dipisah");
         assert_eq!(clean_text("Migrasi 91 persen, pipeline 84 persen"), "Migrasi 91 persen, pipeline 84 persen");
+        // The schema's own field name copied into the text (seen with gpt-6-astra).
+        assert_eq!(clean_text("Timbu dioper sambil mengobrol; refs: []."), "Timbu dioper sambil mengobrol.");
+        assert_eq!(clean_text("Rilis mundur ke Jumat (refs: [4, 5])"), "Rilis mundur ke Jumat");
+        assert_eq!(clean_text("Budget disetujui, refs: L3, L4."), "Budget disetujui.");
+        assert_eq!(clean_text("Ref: [\"L2\"] Budi kirim laporan"), "Budi kirim laporan");
+        assert_eq!(clean_text("Tim membahas referensi desain"), "Tim membahas referensi desain");
     }
 
     #[test]
@@ -576,6 +616,27 @@ pub mod tests {
         let got: Vec<_> = out.iter().map(|a| (a.owner.as_str(), a.task.as_str(), a.due.as_str(), a.refs.clone())).collect();
         assert_eq!(got, [("Raka Aditya Pratama", "Deploy Edu.Platform ke production", "tanggal 16", vec![5])]);
         assert!(review_actions(vec![], &mut model, writer("id"), &[]).is_empty());
+    }
+
+    #[test]
+    fn candidates_the_review_skips_are_kept_not_lost() {
+        let cands = vec![Action::new("Investigasi gap fitur", "Fandi", "", 60.0, vec![2]),
+                         Action::new("Audit share kit di admin area", "Saya", "hari ini", 570.0, vec![20]),
+                         Action::new("Share screen dulu", "Dani", "", 300.0, vec![9])];
+        // The review answers for 2 of 3 candidates; the one it never mentions stays.
+        let mut model = |_: &str, _: &str, _: Schema| -> anyhow::Result<Value> {
+            Ok(json!({"items": [{"id": 1, "verdict": "follow_up", "owner": "Fandi", "task": "Investigasi gap fitur"},
+                {"id": 3, "verdict": "in_meeting", "owner": "Dani", "task": ""}]}))
+        };
+        let out = review_actions(cands, &mut model, writer("id"), &["Saya".into(), "Peserta".into()]);
+        let got: Vec<_> = out.iter().map(|a| (a.owner.as_str(), a.task.as_str())).collect();
+        assert_eq!(got, [("Fandi", "Investigasi gap fitur"), ("Saya", "Audit share kit di admin area")]);
+    }
+
+    #[test]
+    fn review_prompt_treats_saya_as_a_real_owner() {
+        assert!(writer("id").review.contains("'Saya' adalah perekam rapat"));
+        assert!(writer("en").review.contains("'Saya' is the person recording the meeting"));
     }
 
     #[test]
