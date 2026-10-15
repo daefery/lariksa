@@ -90,7 +90,7 @@ Both links always point to the [latest release](https://github.com/daefery/larik
 
 1. Download one of the files above. No installer, no admin rights: Documents or an external drive both work.
 2. Run `Lariksa.exe`. If Windows shows "Windows protected your PC", choose **More info → Run anyway** (the app is not code-signed yet).
-3. Click **Unduh semua** (download all) once, about 3.1 GB. After that Lariksa works offline.
+3. Click **Unduh semua** (download all) once, about 3.1 GB (0.6 GB if an API writes your notulen: choose it in **Pengaturan** first). After that Lariksa works offline.
 4. In **Pengaturan**, add your colleagues' names and team jargon to the glossary.
 5. Tell participants the meeting is recorded, press **Rekam**, and **Selesai** when you're done.
 

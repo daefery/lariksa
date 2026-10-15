@@ -19,3 +19,5 @@ Semua rekaman, transkrip, dan notulen ada di folder "data".
 Model AI ada di folder "models" dan "runtime".
 Pindahkan seluruh folder ini untuk membawa rapatmu ke laptop lain.
 Tidak ada data yang dikirim ke internet, kecuali saat mengunduh model.
+Pengecualian: jika di Pengaturan kamu memilih API untuk menulis notulen,
+teks transkrip (bukan audionya) dikirim ke alamat API yang kamu isi.

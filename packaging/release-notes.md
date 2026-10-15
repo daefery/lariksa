@@ -1,4 +1,4 @@
-Lariksa 0.2.0 is the same app, rebuilt in Rust (Tauri) to be much lighter. Every feature of 0.1.0 is still there: two-track recording, the floating indicator and Ctrl+Shift+R, notulen with chapters, owners and timestamps, inline editing, WhatsApp copy, Word and Markdown export, import of recordings and Read.ai/Meet/Zoom transcripts, search, and crash recovery.
+Lariksa 0.3.0 can write the notulen through an API instead of the local model. Recording and transcription still run on your laptop, and the local model stays the default.
 
 ## Download
 
@@ -7,7 +7,7 @@ Lariksa 0.2.0 is the same app, rebuilt in Rust (Tauri) to be much lighter. Every
 | **Lariksa-portable.zip** | 4 MB | Recommended. Extract anywhere and run `Lariksa\Lariksa.exe`. |
 | **Lariksa.exe** | 8 MB | The same app as a single file. Put it in its own folder first: models and meetings are saved next to it. |
 
-On first run, click **Unduh semua** to download the AI models once (3.1 GB). After that Lariksa works offline.
+On first run, click **Unduh semua** to download the AI models once (3.1 GB, or 0.6 GB if you will use an API for the notulen). After that recording and transcription work offline.
 
 **Requirements:** Windows 10 2004+ or Windows 11 (x64) with WebView2 (built in on Windows 11 and current Windows 10), 8 GB RAM (16 GB recommended), about 4 GB of free disk. A graphics card is optional and makes transcription about 17x faster.
 
@@ -17,30 +17,39 @@ On first run, click **Unduh semua** to download the AI models once (3.1 GB). Aft
 Get-FileHash .\Lariksa-portable.zip -Algorithm SHA256
 ```
 
-## What changed from 0.1.0
+## What's new
 
-| | 0.1.0 (Python) | 0.2.0 (Rust) |
+- **Notulen through an API (optional).** Settings → Who writes the minutes → **An OpenAI-compatible API**. Enter the address (for example `https://api.openai.com/v1`, or a gateway such as CLIProxyAPI at `http://127.0.0.1:8317/v1`), the key and the model, then **Test connection** to list the models the API offers.
+  - Only the transcript text is sent to that address. Audio never leaves the laptop.
+  - The key is never shown again after saving. Changing the address without entering a new key clears the old one, so a key is never sent to a different server.
+  - The 2.5 GB local notulen model is then not needed: **Remove** it under Models & engines, and download it again any time.
+- **More action items, including your own.** On a 12-minute standup tested with an API model, the notulen went from 7 action items for 3 people to 27–29 items covering all 7 people who gave an update, including the recorder's own tasks ("Saya"), which were dropped before. The local model is unchanged at up to 10 items per part of the transcript.
+- **No more "refs: []" in the text.** Line references a model copied into highlights or summaries are removed.
+- **Steadier API runs.** A call that stalls is stopped after 150 s and sent once more, as is one the server rejects as busy (429) or broken (5xx).
+- **Clearer log.** `data\lariksa.log` now records every notulen step that failed and why, how many items each part of the transcript produced and kept, and which action items were dropped.
+
+## Local model or API?
+
+Tested on one 12-minute Indonesian standup, same transcript:
+
+| | Local (Qwen3 4B, RTX 3050 Ti) | API (`gpt-6-astra` through CLIProxyAPI) |
 |---|---|---|
-| Download | 96 MB | 4 MB |
-| App files | 250 MB | 8 MB |
-| App memory | 138 MB | 30 MB (+ Windows' WebView2) |
-| Opens in | a few seconds | 0.1 s |
-| AI downloads | 4 GB (+1.3 GB NVIDIA) | 3.1 GB |
-| Transcribing 10 min on GPU | 21 s, NVIDIA only | 36 s, NVIDIA, AMD or Intel |
+| Time for the notulen | 91 s | 106–126 s |
+| Action items | 8, owners shown as line numbers | 27–29, with names (a few vague, such as "Semua peserta") |
+| Who said what | mixed up 3 times | correct |
+| Chapters | stopped at minute 4 | whole meeting |
+| Data sent | nothing | transcript text |
 
-- **New: display language.** Settings → Display language switches every screen, the recording indicator and app messages between Bahasa Indonesia and English, instantly. Notulen still follow the language of each meeting.
-- **Cleaner transcripts on laptop speakers.** When the mic picks up the meeting from the speakers, Whisper used to invent lines ("Terima kasih telah menonton", "Bersambung", one phrase repeated for minutes). Those are now removed, and "Detect automatically" no longer mistakes a quiet start for another language.
-- **One icon set** across the app, equal-width Settings cards, and a readable chapter list in the dark theme.
-- Transcription now uses whisper.cpp instead of faster-whisper. The wording of transcripts differs slightly from 0.1.0 (about 80% of words match on the same audio; neither is clearly more accurate), so regenerated notulen can differ a little too.
-- The NVIDIA download (cuBLAS and cuDNN, 1.3 GB) is gone: both engines use the GPU through Vulkan and pick the discrete GPU over the built-in one.
+API speed depends on the provider: through the same gateway one call took over 5 minutes, which is why stalled calls are now retried.
 
-## Upgrading from 0.1.0
+## Upgrading from 0.2.0
 
-Replace `Lariksa.exe` in your existing folder and delete `_internal\`. Your meetings, settings and glossary carry over. Open Lariksa and click **Unduh semua** once to fetch the new transcription files (583 MB). You can then delete `models\whisper-large-v3-turbo\` and `runtime\cuda\` to free 3.3 GB.
+Replace `Lariksa.exe` in your existing folder. Your meetings, settings and models carry over, and nothing new needs to be downloaded.
 
 ## Known limitations
 
+- API mode was tested with one gateway (CLIProxyAPI) and three models from it (`gpt-6-astra`, `gemini-3-flash`, `claude-sonnet-4-6`), not directly against OpenAI.
+- Transcription still runs only on the laptop; the gateway tested has no transcription endpoint.
 - Tested on one laptop (Windows 11, RTX 3050 Ti) with audio played through the speakers; not yet on Windows 10, on a laptop with only built-in graphics, or in a live Zoom/Meet call.
-- Without any usable graphics card, transcribing 10 minutes takes about 10 minutes on an i7-12650H (0.1.0 took about 3). Pick **Whisper small** in Settings for about 2 minutes, at lower accuracy.
 - Imported video with Dolby Digital (AC-3) sound, common on DVDs and TV recordings, needs Windows' AC-3 codec, which Windows 11 24H2 no longer includes. Zoom, Teams and Meet recordings (AAC, Opus) are not affected.
 - On laptop speakers your mic also hears the other participants. Lariksa removes that echo, but a headset gives the cleanest transcript.

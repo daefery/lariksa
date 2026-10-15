@@ -1770,7 +1770,7 @@ dependencies = [
 
 [[package]]
 name = "lariksa-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1794,7 +1794,7 @@ dependencies = [
 
 [[package]]
 name = "lariksa-desktop"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "lariksa-core",
