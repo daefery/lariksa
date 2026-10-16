@@ -49,7 +49,7 @@ source scripts/xwin-env.sh
 cargo test -p lariksa-core --target x86_64-pc-windows-msvc --no-run   # then run the test exe from Windows
 ```
 
-`core/examples/` has small Windows tools used during development: `probe` (record 3 s, list GPUs, transcribe a file), `bench` (whisper.cpp GPU vs CPU), `import` (import files and wait for the notulen), `export` (Markdown + DOCX of a meeting), `decode` (imported audio to 16 kHz WAV).
+`core/examples/` has small Windows tools used during development: `probe` (record 3 s, list GPUs, transcribe a file), `bench` (whisper.cpp GPU vs CPU), `import` (import files and wait for the notulen), `export` (Markdown + DOCX of a meeting), `decode` (imported audio to 16 kHz WAV), `retranscribe` (print a recorded meeting's transcript as the app would make it now, without touching the database).
 
 To drive the UI from a script, start the app with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333` and evaluate JavaScript over the DevTools protocol: every UI action is `window.pywebview.api.<name>(...)`.
 
