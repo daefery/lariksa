@@ -210,6 +210,28 @@ pub fn drop_hallucinations(segments: Vec<Segment>, prompt: &str) -> Vec<Segment>
         .collect()
 }
 
+/// Longest a segment can plausibly take to say: a second, plus 0.8 s a word
+/// (people say about 2-3 words a second; the mic track above, 0.3-0.5 s).
+fn plausible_seconds(text: &str) -> f64 {
+    1.0 + 0.8 * words(text).len() as f64
+}
+
+/// whisper.cpp starts a segment where the previous one ended, so after a silence,
+/// or minutes of the others heard faintly on the mic, a short phrase spans the
+/// whole gap: "Mudah-mudahan ya Pak" came out as 07:22-08:52 when it was said at
+/// 08:51 (16 Oct 2026). The end matches the audio; the start is moved up to a
+/// plausible time before it. Without this, pieces with no gap between them are
+/// joined into one five-minute turn that sorts ahead of everything said meanwhile.
+pub fn tighten_starts(segments: Vec<Segment>) -> Vec<Segment> {
+    segments
+        .into_iter()
+        .map(|mut s| {
+            s.start = s.start.max(s.end - plausible_seconds(&s.text));
+            s
+        })
+        .collect()
+}
+
 /// Join short pieces into utterances: same speaker, under a second apart, up to
 /// a sentence end once there is enough text, never past ``max_chars``.
 pub fn merge_segments(segments: &[Segment], max_gap: f64, max_chars: usize) -> Vec<Segment> {
@@ -346,7 +368,8 @@ impl Transcriber {
         on_progress(1.0);
 
         let prompt = build_prompt(&self.options.language, &self.options.glossary);
-        let segments = drop_hallucinations(parse_output(&json), &prompt);
+        // Hallucination checks first: they spot a phrase stretched over minutes.
+        let segments = tighten_starts(drop_hallucinations(parse_output(&json), &prompt));
         let utterances: Vec<Utterance> =
             merge_segments(&segments, 1.0, 300).into_iter().map(|s| Utterance::new(speaker, s.start, s.end, &s.text)).collect();
         log::info!("{speaker}: {} utterances from {}", utterances.len(), audio.display());
@@ -408,6 +431,26 @@ mod tests {
         assert!(out.len() > 1);
         assert!(out.iter().all(|u| u.text.chars().count() <= 300));
         assert_eq!(out.iter().map(|u| u.text.clone()).collect::<Vec<_>>().join(" "), [s; 10].join(" "));
+    }
+
+    // The mic track of the 16 Oct 2026 call: Saya's closing words were stamped from
+    // the end of the previous phrase, then merged into one turn of 103 s.
+    #[test]
+    fn stretched_starts_are_tightened_so_phrases_stay_apart() {
+        let segs = vec![
+            seg(424.84, 428.0, "Iya"),
+            seg(442.19, 532.76, "Mudah-mudahan ya Pak"),
+            seg(532.76, 536.63, "Gak pernah tahu"),
+            seg(536.63, 540.72, "Ya Pak, makasih banyak Pak"),
+        ];
+        let tight = tighten_starts(segs);
+        assert_eq!(tight[0], seg(426.2, 428.0, "Iya"));
+        assert!((tight[1].start - 528.56).abs() < 1e-9, "{:?}", tight[1]);
+        assert_eq!(tight[1].end, 532.76);
+        // Already plausible: unchanged.
+        assert_eq!(tight[3], seg(536.63, 540.72, "Ya Pak, makasih banyak Pak"));
+        let merged = merge_segments(&tight, 1.0, 300);
+        assert_eq!(merged.iter().map(|s| s.start.round()).collect::<Vec<_>>(), [426.0, 529.0]);
     }
 
     #[test]
